@@ -27,9 +27,10 @@ const int X_JOYSTICK_MAX = 1023;
 const int Y_JOYSTICK_MIN = 0;
 const int Y_JOYSTICK_MAX = 1023;
 
-const int SERIAL_COMMAND_SET_CMD = 253;
-const int SERIAL_COMMAND_SET_LEFT_MOTOR = 254;
-const int SERIAL_COMMAND_SET_RIGHT_MOTOR = 255;
+const int SERIAL_COMMAND_SET_CMD = 252;
+const int SERIAL_COMMAND_SET_THROTTLE = 253;
+const int SERIAL_COMMAND_SET_STEERING_POS = 254;
+const int SERIAL_COMMAND_SET_BRAKE_POS = 255;
 
 const byte RED_LED = 3;
 const byte GREEN_LED = 4;
@@ -40,7 +41,7 @@ const int DEAD_ZONE = 15;
 const unsigned long TIME_BETWEEN_GET_DATA = 100;    // 100ms.  perhaps reduce to 50?
 const long SERIAL_DATA_SPEED_BPS = 57600;     //  baud rate = 57600 for Capstone Xbee's
 
-int debug = 0;        //  set to 1 for debug output on Serial Monitor
+int debug = 1;        //  set to 1 for debug output on Serial Monitor
     
 int JOYSTICK_X = A3;     //  left/right joystick input 
 int JOYSTICK_Y = A2;     //  up/down joystick input
