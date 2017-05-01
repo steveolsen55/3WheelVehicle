@@ -50,11 +50,13 @@ int UDvalue;         //  var to hold run time Up / Down joystick (throttle/brake
 int LRvalue;         //  var to hold run time Left / Right steering joystick input
 int UDcenter;        //  what value is generated when joystick is centered?
 int LRcenter;        //  what value is generated when joystick is centered?
-int UDnormalized;    //  limiting Up/Down values to -100 <--> +100
-int LRnormalized;    //  limiting L/R values to -100 <--> +100
+int throttle;        //  limiting throttl values to 0 <--> +100
+int steering;        //  limiting L/R values to -100 <--> +100
+int brake;           //  limiting brake values to -100 <--> 0
    
-int LeftServoVal;    // value to send for Left servo speed control            
-int RightServoVal;   // value to send for Right servo speed control
+int throttleServoVal;    // value to send for throttle servo speed control            
+int steeringServoVal;    // value to send for steering servo speed control
+int brakeServoVal;       // value to send for brake servo control
 
 byte state_machine = B00000000;  // binary 00 = both LEDs off, Red LED is bit 1, Green LED is bit 0.  Set to 1 when on.
                    // TBD - add bits for turbo boost, headlights, ??
@@ -145,17 +147,17 @@ if(debug ==1)
 //  using 105 for values < XXcenter, due to center bias of the joysticks being used: not exactly 1023/2.
 
        if ( UDvalue > UDcenter )
-            UDnormalized = constrain( 100*(float(UDvalue-UDcenter)/float(1022-UDcenter)), -100, 100);
-       else UDnormalized = constrain( 105*(float(UDcenter-UDvalue)/float(UDcenter-1023)), -100, 100); 
+            throttleServoVal = constrain( 100*(float(UDvalue-UDcenter)/float(1022-UDcenter)), 0, 100);
+       else brakeServoVal = constrain( 105*(float(UDcenter-UDvalue)/float(UDcenter-1023)), -100, 0); 
        if ( LRvalue > LRcenter )
-            LRnormalized = constrain( 100*(float(LRvalue-LRcenter)/float(1022-LRcenter)), -100, 100);
-       else LRnormalized = constrain( 105*(float(LRcenter-LRvalue)/float(LRcenter-1023)), -100, 100);
+            steeringServoVal = constrain( 100*(float(LRvalue-LRcenter)/float(1022-LRcenter)), -100, 100);
+       else steeringServoVal = constrain( 105*(float(LRcenter-LRvalue)/float(LRcenter-1023)), -100, 100);
 
 if(debug ==1)
 {
-   Serial.print("LRnormalized = "); Serial.print(LRnormalized);
+   Serial.print("steeringServoVal = "); Serial.print(steeringServoVal);
    Serial.print("\t");
-   Serial.print("UDnormalized = "); Serial.print(UDnormalized);
+   Serial.print("throttleServoVal = "); Serial.print(UDnormalized);
 } 
 
        if(UDnormalized >= -DEAD_ZONE && UDnormalized <= DEAD_ZONE && LRnormalized <=  DEAD_ZONE && LRnormalized >= -DEAD_ZONE) 
