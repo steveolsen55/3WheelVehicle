@@ -41,10 +41,10 @@ const int MOTOR_PIN_THROTTLE = 9;
 const int MOTOR_PIN_STEERING = 8;
 const int MOTOR_PIN_BRAKE = 7;
 
-const int MOTOR_VALUE_MIN = 50;
-const int MOTOR_VALUE_MAX = 130;
+const int MOTOR_VALUE_MIN = 0;
+const int MOTOR_VALUE_MAX = 180;
 const int MOTOR_VALUE_CENTER = 90;     // servo position for center position
-const int MOTOR_VALUE_BRAKE = 45;    // servo position for full braking
+const int MOTOR_VALUE_BRAKE = 45;      // servo position for full braking
 const int MOTOR_VALUE_THROTTLE_ZERO = 0;
 
 const int NUMBER_OF_BYTES_IN_A_COMMAND = 8;
@@ -55,7 +55,7 @@ const int SERIAL_COMMAND_SET_BRAKE_POS = 255;
 
 const long SERIAL_DATA_SPEED_BPS = 57600;   // Baud rate = 57600 for Capstone Xbee's
 
-byte debug = 0;      //  set to 1 to send debug output to Serial Monitor
+byte debug = 1;      //  set to 1 to send debug output to Serial Monitor
 
 int throttleMotorVal;
 int steeringMotorVal;
@@ -89,12 +89,12 @@ void loop()
 //  if(debug == 1)
 //      Serial.println( Serial.available());
 
-  if (Serial.available() > NUMBER_OF_BYTES_IN_A_COMMAND)
+  if (Serial.available() >= NUMBER_OF_BYTES_IN_A_COMMAND)
   {
     int incomingByte = Serial.read(); 
     
 //  if(debug == 1)
-//    Serial.printn( incomingByte);
+//    Serial.println( incomingByte);
 
     if(SERIAL_COMMAND_SET_CMD == incomingByte)
     {
@@ -112,6 +112,12 @@ void loop()
     {
       brakeMotor = Serial.read();
     }
+
+if (debug == 1)
+{
+   Serial.print("state_machine ="); Serial.println(state_machine, BIN);
+}
+    
   }
   if( (state_machine & 0x03) == B01)   // Green status: pulse servos
   {
@@ -145,7 +151,7 @@ void motor_setValues (int throttle, int steering, int brake)
   }
   else
   {
-     steeringMotorVal = map(steering,135,45,MOTOR_VALUE_MIN,MOTOR_VALUE_MAX);
+     steeringMotorVal = map(steering,-100,100,MOTOR_VALUE_MIN,MOTOR_VALUE_MAX);
   }
   if (brake == 0)
   {
@@ -153,9 +159,9 @@ void motor_setValues (int throttle, int steering, int brake)
   }
   else
   {
-     brakeMotorVal = map(brake,135,45,MOTOR_VALUE_MIN,MOTOR_VALUE_MAX);
+     brakeMotorVal = map(brake,-100,0,MOTOR_VALUE_MIN,MOTOR_VALUE_MAX);
   }
-
+/*
   if(debug == 1)
   {
      Serial.print("throttleMotorVal = "); Serial.print(throttleMotorVal);
@@ -171,6 +177,7 @@ void motor_setValues (int throttle, int steering, int brake)
     steeringMotor.write(steeringMotorVal);
     brakeMotor.write(brakeMotorVal);
   }
+  */
 }
 
 void stopRobot ()
