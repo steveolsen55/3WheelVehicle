@@ -50,9 +50,6 @@ int UDvalue;         //  var to hold run time Up / Down joystick (throttle/brake
 int LRvalue;         //  var to hold run time Left / Right steering joystick input
 int UDcenter;        //  what value is generated when joystick is centered?
 int LRcenter;        //  what value is generated when joystick is centered?
-int throttle;        //  limiting throttl values to 0 <--> +100
-int steering;        //  limiting L/R values to -100 <--> +100
-int brake;           //  limiting brake values to -100 <--> 0
    
 int throttleServoVal;    // value to send for throttle servo speed control            
 int steeringServoVal;    // value to send for steering servo position control
@@ -81,7 +78,7 @@ void setup()
 
    bitClear(state_machine, 0);     // Green LED is off
    bitSet(state_machine, 1);       // Red LED is on
-   
+
    buttonState = digitalRead(SWITCH_IN);   // read the initial button state
 
    UDcenter = analogRead(JOYSTICK_Y);     //  initialize the centered value      
@@ -102,7 +99,7 @@ void loop()
      }
      buttonState = val;              // save the new button state in our variable
    }
-
+   
    if (buttonPresses == 1)
    {
       digitalWrite(GREEN_LED, HIGH);  // turn on the Green LED
@@ -118,7 +115,7 @@ void loop()
       bitSet(state_machine, 1);       //                     Red LED is on
       buttonPresses = 0;
    }
-    
+
    if ( (state_machine & 0x03) == B01 )     //  state machine == 'GO!!', so process the joystick inputs
    {  
      int UDvalue = 0;          //  clear the joystick input vars
@@ -141,58 +138,46 @@ if(debug ==1)
    
 }   */
 
-//      the map function doesn't allow for irregular centered joystick values
-//      using float calculations gives more precise control and adjusts the center
-//          UDvalue = map(UDvalue,X_JOYSTICK_MIN,Y_JOYSTICK_MAX,-100,100);  
-//          LRvalue = map(LRvalue,X_JOYSTICK_MIN,X_JOYSTICK_MAX,-100,100);
-    
-//  using 105 for values < XXcenter, due to center bias of the joysticks being used: not exactly 1023/2.
-
        if ( UDvalue > UDcenter )
        {
-//          throttleServoVal = constrain( 100*(float(UDvalue-UDcenter)/float(Y_JOYSTICK_MAX-UDcenter)), 0, 100);
           throttleServoVal = map(UDvalue,UDcenter,Y_JOYSTICK_MAX,0,100);
           brakeServoVal = 0;
        }    
        else 
        {   
-//          brakeServoVal = constrain( 105*(float(UDcenter-UDvalue)/float(UDcenter)), -100, 0); 
           brakeServoVal = map(UDvalue,Y_JOYSTICK_MIN,UDcenter,-100,0); 
           throttleServoVal = 0;
        }       
        if ( LRvalue > LRcenter )
        {
-//          steeringServoVal = constrain( 100*(float(LRvalue-LRcenter)/float(X_JOYSTICK_MAX-LRcenter)), -100, 100);
           steeringServoVal = map(LRvalue,LRcenter,X_JOYSTICK_MAX,0,100);
        }
        else 
        {
-//         steeringServoVal = constrain( 105*(float(LRcenter-LRvalue)/float(LRcenter)), -100, 100);
           steeringServoVal = map(LRvalue,X_JOYSTICK_MIN,LRcenter,-100,0);
        }
-        if(debug ==1)
-        {
-           Serial.print("throttleServoVal = "); Serial.print(throttleServoVal);
-           Serial.print("\t");
-           Serial.print("steeringServoVal = "); Serial.print(steeringServoVal);
-           Serial.print("\t");
-           Serial.print("brakeServoVal = "); Serial.println(brakeServoVal);
-        } 
-
-        if(brakeServoVal >= -DEAD_ZONE && throttleServoVal <= DEAD_ZONE && steeringServoVal <=  DEAD_ZONE && steeringServoVal >= -DEAD_ZONE) 
-        {  
-           if (debug ==1)    Serial.println( "Deadzone" );
+/*       if(debug ==1)
+       {
+          Serial.print("throttleServoVal = "); Serial.print(throttleServoVal);
+          Serial.print("\t");
+          Serial.print("steeringServoVal = "); Serial.print(steeringServoVal);
+          Serial.print("\t");
+          Serial.print("brakeServoVal = "); Serial.println(brakeServoVal);
+       } 
+*/
+       if(brakeServoVal >= -DEAD_ZONE && throttleServoVal <= DEAD_ZONE && steeringServoVal <=  DEAD_ZONE && steeringServoVal >= -DEAD_ZONE) 
+       {  
+          if (debug ==1)    Serial.println( "Deadzone" );
            
-           SendNewMotorValues(MOTOR_VALUE_STOP, MOTOR_VALUE_STOP, MOTOR_VALUE_STOP, state_machine);
-           previousTime = millis();
-        }
-        else                                   
-        {                                         
-           SendNewMotorValues(throttleServoVal, steeringServoVal, brakeServoVal, state_machine);
-           previousTime = millis();
-        }
+          SendNewMotorValues(MOTOR_VALUE_STOP, MOTOR_VALUE_STOP, MOTOR_VALUE_STOP, state_machine);
+          previousTime = millis();
+       }
+       else                                   
+       {                                         
+          SendNewMotorValues(throttleServoVal, steeringServoVal, brakeServoVal, state_machine);
+          previousTime = millis();
+       }
       
- 
       if ( (state_machine & 0x03) == B10)    //  state machine == 'do nothing', so tell the robot
       {
          SendNewMotorValues(MOTOR_VALUE_STOP, MOTOR_VALUE_STOP, MOTOR_VALUE_STOP, state_machine);
