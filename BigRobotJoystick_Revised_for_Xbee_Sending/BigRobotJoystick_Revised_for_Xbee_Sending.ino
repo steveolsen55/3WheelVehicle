@@ -12,7 +12,7 @@
  *  Hardware setup:
  *    Arduino Pro Mini 5v 16MHz microcontroller
  *    Two Paralax 2-axis joysticks:  one for Up/Down, one for Left/Right
- *    XBee series 1 1mw U.FL Connection, on a SparkFun 'XBee Explorer Regulated' board
+ *    XBee series 1 1mw U.FL Connection, mounted on a SparkFun 'XBee Explorer Regulated' board
  *    Push button for start / stop control
  *    LEDs for status indicators
  *    
@@ -23,9 +23,9 @@
  
 const int MOTOR_VALUE_STOP = 0;
 const int X_JOYSTICK_MIN = 3;
-const int X_JOYSTICK_MAX = 1023;
+const int X_JOYSTICK_MAX = 1022;
 const int Y_JOYSTICK_MIN = 0;
-const int Y_JOYSTICK_MAX = 1023;
+const int Y_JOYSTICK_MAX = 1021;
 
 const int SERIAL_COMMAND_SET_CMD = 252;
 const int SERIAL_COMMAND_SET_THROTTLE = 253;
@@ -36,9 +36,10 @@ const byte RED_LED = 3;
 const byte GREEN_LED = 4;
 const byte BUTTON = 5;
 
-const int DEAD_ZONE = 5;
+const int DEAD_ZONE = 5;    //  narrow deadzone near joystick centered position
 
 const unsigned long TIME_BETWEEN_GET_DATA = 100;    // 100ms.  perhaps reduce to 50?
+
 const long SERIAL_DATA_SPEED_BPS = 57600;     //  baud rate = 57600 for Capstone Xbee's
 
 int debug = 0;        //  set to 1 for debug output on Serial Monitor
@@ -55,14 +56,14 @@ int throttleServoVal;    // value to send for throttle servo speed control
 int steeringServoVal;    // value to send for steering servo position control
 int brakeServoVal;       // value to send for brake servo position control
 
-byte state_machine = B00000000;  // binary 00 = both LEDs off, Red LED is bit 1, Green LED is bit 0.  Set to 1 when on.
-                                 // TBD - add bits for turbo boost, headlights, ??
-                                 // This variable tracks the status of the overall state machine
+byte state_machine = 0x00;   // binary 00 = both LEDs off, Red LED is bit 1, Green LED is bit 0.  Set to 1 when on.
+                             // TBD - add bits for turbo boost, headlights, ??
+                             // This variable tracks the status of the overall state machine
 
-boolean turnOnOff = false;       //  false == 0, true != 0    initially: robot OFF
-int valButton;                   // variable for reading the button pin status
+boolean turnOnOff = false;   //  false == 0, true != 0    initially: robot OFF
+int valButton;               // variable for reading the button pin status
 
-unsigned long previousTime;
+unsigned long previousTime;    
 
 void setup()
 {
@@ -161,14 +162,12 @@ if(debug ==1)
        {                                         
           SendNewMotorValues(throttleServoVal, steeringServoVal, brakeServoVal, state_machine);
           previousTime = millis();
-       }
-      
-        
+       }   
     }  
   }
-  if ( (state_machine & 0x03) == B10)    //  state machine == 'OFF', so tell the robot
+  else      //  ( (state_machine & 0x03) == B10)  state machine == 'OFF', so tell the robot
   {
-     Serial.print(" state_machine = "); Serial.println(state_machine);
+//     Serial.print(" state_machine = "); Serial.println(state_machine,HEX);
      SendNewMotorValues(MOTOR_VALUE_STOP, MOTOR_VALUE_STOP, MOTOR_VALUE_STOP, state_machine);
      previousTime = millis();
   } 
@@ -179,10 +178,7 @@ void SendNewMotorValues(char throttle, char steering, char brake, byte statemach
 {
    if (debug == 1)
    {
- 
-      Serial.print("state_machine = ");
-      Serial.print(statemachine,BIN);
-      Serial.print("\t");
+
       Serial.print("throttle = ");
       Serial.print(throttle,DEC);
       Serial.print("\t");
@@ -190,19 +186,22 @@ void SendNewMotorValues(char throttle, char steering, char brake, byte statemach
       Serial.print(steering,DEC);
       Serial.print("\t");
       Serial.print("brake = ");
-      Serial.println(brake,DEC);
+      Serial.print(brake,DEC);
+      Serial.print("\t");      
+      Serial.print("state_machine = ");
+      Serial.println(statemachine,HEX);  
  
    }
    else
    {
-      Serial.write (SERIAL_COMMAND_SET_CMD);
-      Serial.write (statemachine);
-      Serial.write (SERIAL_COMMAND_SET_THROTTLE);
-      Serial.write (throttle);              
-      Serial.write (SERIAL_COMMAND_SET_STEERING_POS);
-      Serial.write (steering);              
-      Serial.write (SERIAL_COMMAND_SET_BRAKE_POS);
-      Serial.write (brake);    
+      Serial.write(SERIAL_COMMAND_SET_CMD);
+      Serial.write(statemachine);
+      Serial.write(SERIAL_COMMAND_SET_THROTTLE);
+      Serial.write(throttle);              
+      Serial.write(SERIAL_COMMAND_SET_STEERING_POS);
+      Serial.write(steering);              
+      Serial.write(SERIAL_COMMAND_SET_BRAKE_POS);
+      Serial.write(brake);    
    }
 }
 
