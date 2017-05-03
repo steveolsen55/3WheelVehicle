@@ -70,9 +70,7 @@ void setup()
     pinMode(GREEN_LED,OUTPUT);
     digitalWrite(GREEN_LED, LOW);
     digitalWrite(RED_LED, HIGH);  
-    bitClear(state_machine,0);     // Green LED is off
-    bitSet(state_machine,1);       // Red LED is on
-    
+   
     throttleMotor.attach(MOTOR_PIN_THROTTLE);  
     steeringMotor.attach (MOTOR_PIN_STEERING);
     brakeMotor.attach(MOTOR_PIN_BRAKE);
@@ -128,13 +126,13 @@ if (debug == 1)
 }
     
   }
-  if( (state_machine & 0x03) == B01)   // Green status: pulse servos
+  if( bitRead(state_machine,0) == true )   // Green status: pulse servos
   {
     digitalWrite(GREEN_LED, HIGH);
     digitalWrite(RED_LED, LOW);  
     motor_setValues(throttleMotor,steeringMotor,brakeMotor);   
   }
-  if( (state_machine & 0x03) == B10)    //  All Stop!!
+  if( bitRead(state_machine,0) == false )    //  All Stop!!
   {
      digitalWrite(GREEN_LED, LOW);
      digitalWrite(RED_LED, HIGH);
