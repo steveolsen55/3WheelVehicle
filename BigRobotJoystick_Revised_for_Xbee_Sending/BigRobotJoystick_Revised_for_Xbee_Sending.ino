@@ -56,7 +56,7 @@ int throttleServoVal;    // value to send for throttle servo speed control
 int steeringServoVal;    // value to send for steering servo position control
 int brakeServoVal;       // value to send for brake servo position control
 
-byte state_machine = 0x00;   // binary 00 = both LEDs off, Red LED is bit 1, Green LED is bit 0.  Set to 1 when on.
+byte state_machine = 0x00;   // binary 00 = Robot OFF.    Set bit 0 to enable Robot.
                              // TBD - add bits for turbo boost, headlights, ??
                              // This variable tracks the status of the overall state machine
 
@@ -73,8 +73,7 @@ void setup()
 
    digitalWrite(RED_LED,HIGH);     // turn on the Red LED
    digitalWrite(GREEN_LED,LOW);    // turn off the Green LED
-   bitClear(state_machine, 0);     // Green LED is off
-   bitSet(state_machine, 1);       // Red LED is on
+   bitClear(state_machine, 0);     // Robot OFF mode
 
    UDcenter = analogRead(JOYSTICK_Y);     //  initialize the centered value      
    LRcenter = analogRead(JOYSTICK_X);     //  initialize the centered value
@@ -91,15 +90,13 @@ void loop()
    {
       digitalWrite(GREEN_LED, HIGH);  // turn on the Green LED
       digitalWrite(RED_LED, LOW);     // turn off the Red LED
-      bitSet(state_machine, 0);       // state_machine bits: Green LED is on
-      bitClear(state_machine, 1);     //                     Red LED is off
+      bitSet(state_machine, 0);       // state_machine bits: Robot ON
    }
    if (turnOnOff == false)       //  Robot OFF state
    {
       digitalWrite(GREEN_LED, LOW);   // turn off the Green LED
       digitalWrite(RED_LED, HIGH);    // turn on the Red LED
-      bitClear(state_machine, 0);     // state_machine bits: Green LED is off
-      bitSet(state_machine, 1);       //                     Red LED is on
+      bitClear(state_machine, 0);     // state_machine bits: Robot OFF
    }
 
    if ( (state_machine & 0x03) == B01 )     //  state machine == 'ON', so process the joystick inputs
