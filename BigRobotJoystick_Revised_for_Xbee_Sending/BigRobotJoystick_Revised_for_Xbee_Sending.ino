@@ -178,13 +178,14 @@ if(debug ==1)
           previousTime = millis();
        }
       
-      if ( (state_machine & 0x03) == B10)    //  state machine == 'do nothing', so tell the robot
-      {
-         SendNewMotorValues(MOTOR_VALUE_STOP, MOTOR_VALUE_STOP, MOTOR_VALUE_STOP, state_machine);
-         previousTime = millis();
-      }   
+        
     }  
   }
+  if ( (state_machine & 0x03) == B10)    //  state machine == 'do nothing', so tell the robot
+  {
+     SendNewMotorValues(MOTOR_VALUE_STOP, MOTOR_VALUE_STOP, MOTOR_VALUE_STOP, state_machine);
+     previousTime = millis();
+  } 
 }  
 
 //****************************** SUBROUTINES ************************************
