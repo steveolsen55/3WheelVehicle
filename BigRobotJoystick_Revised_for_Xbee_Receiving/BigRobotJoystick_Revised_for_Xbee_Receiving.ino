@@ -77,7 +77,13 @@ void setup()
     stopRobot();
 
 //  -->>  initialize the Electronic Speed Controller (ESC) here <<--
-    
+    throttleMotor.attach(MOTOR_PIN_THROTTLE);
+    throttleMotor.write(0);
+    delay (20);
+    throttleMotor.write(180);
+    delay (10);
+    throttleMotor.write(0);
+  
     Serial.begin(SERIAL_DATA_SPEED_BPS);
 }
 
