@@ -1,6 +1,6 @@
 /*
  *   James Beaver, Anthony G., Stephen A.
- *   April 29, 2017
+ *   May 2, 2017
  *   ETEC 290 Capstone project
  *   
  *  Robot control program.  
@@ -42,8 +42,8 @@ const int MOTOR_PIN_STEERING = 8;
 const int MOTOR_PIN_BRAKE = 7;
 
 const int MOTOR_VALUE_MIN = 0;
-const int MOTOR_VALUE_MAX = 180;
 const int MOTOR_VALUE_CENTER = 90;     // servo position for center position
+const int MOTOR_VALUE_MAX = 180;
 const int MOTOR_VALUE_BRAKE = 45;      // servo position for full braking
 const int MOTOR_VALUE_THROTTLE_ZERO = 0;
 
@@ -61,8 +61,8 @@ int throttleMotorVal;
 int steeringMotorVal;
 int brakeMotorVal;
 
-byte state_machine;  // binary 00 = both LEDs off, Red LED is bit 1, Green LED is bit 0.  
-                     //  Set each bit to 1 when on.  This var tracks the state machine status.
+byte state_machine = 0x00;  // binary 00 = both LEDs off, Red LED is bit 1, Green LED is bit 0.  
+                            //  Set each bit to 1 when on.  This var tracks the state machine status.
 
 void setup()
 {
@@ -70,12 +70,15 @@ void setup()
     pinMode(GREEN_LED,OUTPUT);
     digitalWrite(GREEN_LED, LOW);
     digitalWrite(RED_LED, HIGH);  
+    bitClear(state_machine,0);     // Green LED is off
+    bitSet(state_machine,1);       // Red LED is on
+    
     throttleMotor.attach(MOTOR_PIN_THROTTLE);  
     steeringMotor.attach (MOTOR_PIN_STEERING);
     brakeMotor.attach(MOTOR_PIN_BRAKE);
     stopRobot();
 
-//  initialize the Electronic Speed Controller (ESC) here ->
+//  -->>  initialize the Electronic Speed Controller (ESC) here <<--
     
     Serial.begin(SERIAL_DATA_SPEED_BPS);
 }
@@ -161,7 +164,7 @@ void motor_setValues (int throttle, int steering, int brake)
   {
      brakeMotorVal = map(brake,-100,0,MOTOR_VALUE_MIN,MOTOR_VALUE_MAX);
   }
-/*
+
   if(debug == 1)
   {
      Serial.print("throttleMotorVal = "); Serial.print(throttleMotorVal);
@@ -177,7 +180,7 @@ void motor_setValues (int throttle, int steering, int brake)
     steeringMotor.write(steeringMotorVal);
     brakeMotor.write(brakeMotorVal);
   }
-  */
+
 }
 
 void stopRobot ()
