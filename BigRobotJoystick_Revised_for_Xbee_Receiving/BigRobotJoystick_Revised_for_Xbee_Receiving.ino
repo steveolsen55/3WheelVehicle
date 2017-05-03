@@ -118,7 +118,13 @@ void loop()
 
 if (debug == 1)
 {
-   Serial.print("state_machine ="); Serial.println(state_machine, BIN);
+   Serial.print("state_machine ="); Serial.print(state_machine, BIN);
+   Serial.print("\t");
+   Serial.print("throttle = "); Serial.print(throttleMotor);
+   Serial.print("\t");
+   Serial.print("steering = "); Serial.print(steeringMotor);
+   Serial.print("\t");
+   Serial.print("brake = "); Serial.println(brakeMotor);
 }
     
   }
@@ -164,7 +170,7 @@ void motor_setValues (int throttle, int steering, int brake)
   {
      brakeMotorVal = map(brake,-100,0,MOTOR_VALUE_MIN,MOTOR_VALUE_MAX);
   }
-
+/*
   if(debug == 1)
   {
      Serial.print("throttleMotorVal = "); Serial.print(throttleMotorVal);
@@ -180,6 +186,7 @@ void motor_setValues (int throttle, int steering, int brake)
     steeringMotor.write(steeringMotorVal);
     brakeMotor.write(brakeMotorVal);
   }
+*/
 
 }
 
