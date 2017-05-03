@@ -34,7 +34,7 @@ const int SERIAL_COMMAND_SET_BRAKE_POS = 255;
 
 const byte RED_LED = 3;
 const byte GREEN_LED = 4;
-const byte SWITCH_IN = 5;
+const byte BUTTON = 5;
 
 const int DEAD_ZONE = 5;
 
@@ -59,11 +59,8 @@ byte state_machine = B00000000;  // binary 00 = both LEDs off, Red LED is bit 1,
                                  // TBD - add bits for turbo boost, headlights, ??
                                  // This variable tracks the status of the overall state machine
 
-boolean turnOnOff = false;
-
-int val;                    // variable for reading the button pin status
-int buttonState;            // variable to hold the latest button state
-int buttonPresses = 0;      // how many times the button has been pressed
+boolean turnOnOff = false;       //  false == 0, true != 0    initially: robot OFF
+int valButton;                   // variable for reading the button pin status
 
 unsigned long previousTime;
 
@@ -71,15 +68,12 @@ void setup()
 {
    pinMode(RED_LED, OUTPUT);  
    pinMode(GREEN_LED, OUTPUT);
-   pinMode(SWITCH_IN, INPUT);
+   pinMode(BUTTON, INPUT);
 
    digitalWrite(RED_LED,HIGH);     // turn on the Red LED
    digitalWrite(GREEN_LED,LOW);    // turn off the Green LED
-
    bitClear(state_machine, 0);     // Green LED is off
    bitSet(state_machine, 1);       // Red LED is on
-
-   buttonState = digitalRead(SWITCH_IN);   // read the initial button state
 
    UDcenter = analogRead(JOYSTICK_Y);     //  initialize the centered value      
    LRcenter = analogRead(JOYSTICK_X);     //  initialize the centered value
@@ -90,33 +84,24 @@ void setup()
 
 void loop()
 { 
-   val = digitalRead(SWITCH_IN);     // read input value and store it in val   
-   if (val != buttonState)           // the button state has changed!
-   { 
-     if (val == LOW)                 // check if the button is pressed
-     {    
-        buttonPresses++;             // increment the buttonPresses variable
-     }
-     buttonState = val;              // save the new button state in our variable
-   }
+   turnOnOff = readButton();    // read button input value - subroutine near bottom of this code
    
-   if (buttonPresses == 1)
+   if (turnOnOff == true)       //  Robot ON state
    {
       digitalWrite(GREEN_LED, HIGH);  // turn on the Green LED
       digitalWrite(RED_LED, LOW);     // turn off the Red LED
       bitSet(state_machine, 0);       // state_machine bits: Green LED is on
       bitClear(state_machine, 1);     //                     Red LED is off
    }
-   if (buttonPresses == 2)
+   if (turnOnOff == false)       //  Robot OFF state
    {
       digitalWrite(GREEN_LED, LOW);   // turn off the Green LED
       digitalWrite(RED_LED, HIGH);    // turn on the Red LED
       bitClear(state_machine, 0);     // state_machine bits: Green LED is off
       bitSet(state_machine, 1);       //                     Red LED is on
-      buttonPresses = 0;
    }
 
-   if ( (state_machine & 0x03) == B01 )     //  state machine == 'GO!!', so process the joystick inputs
+   if ( (state_machine & 0x03) == B01 )     //  state machine == 'ON', so process the joystick inputs
    {  
      int UDvalue = 0;          //  clear the joystick input vars
      int LRvalue = 0;
@@ -181,8 +166,9 @@ if(debug ==1)
         
     }  
   }
-  if ( (state_machine & 0x03) == B10)    //  state machine == 'do nothing', so tell the robot
+  if ( (state_machine & 0x03) == B10)    //  state machine == 'OFF', so tell the robot
   {
+     Serial.print(" state_machine = "); Serial.println(state_machine);
      SendNewMotorValues(MOTOR_VALUE_STOP, MOTOR_VALUE_STOP, MOTOR_VALUE_STOP, state_machine);
      previousTime = millis();
   } 
@@ -219,4 +205,28 @@ void SendNewMotorValues(char throttle, char steering, char brake, byte statemach
       Serial.write (brake);    
    }
 }
- 
+
+int readButton()
+{
+  unsigned long contactTime;           // local variable; contactTime declared
+  valButton=digitalRead(BUTTON);       // Read the pushbutton on an digital pin
+
+  if(valButton == HIGH)                // Since 5V will produce a HIGH --> means button not pushed
+    return turnOnOff;                  // return the value of turnOnOff without changing it
+
+  contactTime=millis();                // set contactTime = to the millis() clock value
+  while(valButton == LOW)              // button pressed produces a LOW while the pushbutton is pushed
+  {
+    valButton=digitalRead(BUTTON);     // read the button value again and keep reading until valButton is HIGH again
+  }
+
+  if(millis()-contactTime<20)          // If the button is held for less than 20 ms
+    return turnOnOff;                  // return the turnOnOff value unchanged
+
+  return(1-turnOnOff);                 // if the button is held longer than 20 ms then change the turnOnOff
+                                       // to the opposite value to what it was
+}
+
+
+
+
