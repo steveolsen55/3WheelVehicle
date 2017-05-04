@@ -116,18 +116,22 @@ void loop()
      case SERIAL_COMMAND_SET_CMD:
      {
         state_machine = Serial.read();
+        break;
      }
      case  SERIAL_COMMAND_SET_THROTTLE:
      {
         throttleMotor = Serial.read();
+        break;
      }
      case SERIAL_COMMAND_SET_STEERING_POS:
      {
         steeringMotor = Serial.read();
+        break;
      }
      case SERIAL_COMMAND_SET_BRAKE_POS:
      {
         brakeMotor = Serial.read();
+        break;
      }
    }
 
