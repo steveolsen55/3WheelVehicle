@@ -88,7 +88,8 @@ void setup()
 void loop()
 {
   turnOnOff = readButton();    // read button input value - subroutine near bottom of this code
-
+  bitClear(state_machine, 1);  //  make sure turbo boost bit is clear
+  
   if (turnOnOff == true)       //  Robot ON state
   {
     digitalWrite(GREEN_LED, HIGH);  // turn on the Green LED
@@ -102,25 +103,27 @@ void loop()
     bitClear(state_machine, 0);     // state_machine bits: Robot OFF
   }
 
-  if ( (state_machine & 0x03) == B01 )     //  state machine == 'ON', so process the joystick inputs
+  if ( bitRead(state_machine,0) == true )     //  state machine == 'ON', so process the joystick inputs
   {
     int UDvalue = 0;          //  clear the joystick input vars
     int LRvalue = 0;
-    int turboval =0;
+    boolean turboval = false;
 
     if (millis() - previousTime >= TIME_BETWEEN_GET_DATA)
     {
       UDvalue = analogRead(JOYSTICK_Y);   //  read the current joystick input positions
       LRvalue = analogRead(JOYSTICK_X);   //
-      turboval = digitalRead(TURBO);         // read postion of button for turbo
+      turboval = digitalRead(TURBO);         //  read postion of button for turbo - normally HIGH unless pressed
+
+      //   Serial.print("turboval = "); Serial.println(turboval);
 
       if (turboval)
       {
-        bitSet(state_machine, 1);
+        bitClear(state_machine, 1);
       }
       else
       {
-        bitClear(state_machine, 1);
+        bitSet(state_machine, 1);
       }
       /*
         if(debug ==1)
@@ -142,7 +145,7 @@ void loop()
       }
       else
       {
-        brakeServoVal = map(UDvalue, Y_JOYSTICK_MIN, UDcenter, -100, 0);
+        brakeServoVal = map(UDvalue, Y_JOYSTICK_MIN, UDcenter, -105, 0);
         throttleServoVal = 0;
       }
       if ( LRvalue > LRcenter )
@@ -167,16 +170,18 @@ void loop()
         if (debug == 1)    Serial.println( "Deadzone" );
 
         SendNewMotorValues(MOTOR_VALUE_STOP, MOTOR_VALUE_STOP, MOTOR_VALUE_STOP, state_machine);
+        bitClear(state_machine, 1);
         previousTime = millis();
       }
       else
       {
         SendNewMotorValues(throttleServoVal, steeringServoVal, brakeServoVal, state_machine);
+        bitClear(state_machine, 1);
         previousTime = millis();
       }
     }
   }
-  else      //  ( (state_machine & 0x03) == B10)  state machine == 'OFF', so tell the robot
+  else      //  state machine == 'OFF', so tell the robot
   {
     //     Serial.print(" state_machine = "); Serial.println(state_machine,HEX);
     SendNewMotorValues(MOTOR_VALUE_STOP, MOTOR_VALUE_STOP, MOTOR_VALUE_STOP, state_machine);
@@ -200,7 +205,7 @@ void SendNewMotorValues(char throttle, char steering, char brake, byte statemach
     Serial.print(brake, DEC);
     Serial.print("\t");
     Serial.print("state_machine = ");
-    Serial.println(statemachine, HEX);
+    Serial.println(statemachine, BIN);
 
   }
   else
