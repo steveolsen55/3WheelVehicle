@@ -34,8 +34,9 @@ Servo throttleMotor;
 Servo steeringMotor;
 Servo brakeMotor;
 
-const int RED_LED = 3;
-const int GREEN_LED = 4;
+const byte RED_LED = 3;      // robot OFF
+const byte GREEN_LED = 4;    // robot ON
+const byte BLUE_LED = 5;     // turbo ON
 
 const int MOTOR_PIN_THROTTLE = 9;
 const int MOTOR_PIN_STEERING = 8;
@@ -58,21 +59,24 @@ const int SERIAL_COMMAND_SET_BRAKE_POS = 255;
 
 const long SERIAL_DATA_SPEED_BPS = 57600;   // Baud rate = 57600 for Capstone Xbee's
 
-byte debug = 1;      //  set to 1 to send debug output to Serial Monitor
+byte debug = 0;      //  set to 1 to send debug output to Serial Monitor
 
 int throttleMotorVal;
 int steeringMotorVal;
 int brakeMotorVal;
 
-byte state_machine = 0x00;  // binary 00 = both LEDs off, Red LED is bit 1, Green LED is bit 0.  
+byte state_machine = 0x00;  //  Bit 0 = Robot enabled, set for ON, clear for OFF  
+                            //  Bit 1 = turbo boost, set for ON, clear for OFF
                             //  Set each bit to 1 when on.  This var tracks the state machine status.
 
 void setup()
 {
     pinMode(RED_LED,OUTPUT);            
     pinMode(GREEN_LED,OUTPUT);
+    pinMode(BLUE_LED,OUTPUT);
     digitalWrite(GREEN_LED, LOW);
-    digitalWrite(RED_LED, HIGH);  
+    digitalWrite(RED_LED, HIGH); 
+    digitalWrite(BLUE_LED, LOW); 
    
     throttleMotor.attach(MOTOR_PIN_THROTTLE);  
     steeringMotor.attach (MOTOR_PIN_STEERING);
@@ -95,7 +99,8 @@ void loop()
   static char throttleMotor = 0;
   static char steeringMotor = 0;
   static char brakeMotor = 0;
- 
+
+  
 //  if(debug == 1)
 //      Serial.println( Serial.available());
 
@@ -126,7 +131,7 @@ void loop()
      }
    }
 
-
+/*
 if (debug == 1)
 {
    Serial.print("state_machine ="); Serial.print(state_machine, BIN);
@@ -137,7 +142,8 @@ if (debug == 1)
    Serial.print("\t");
    Serial.print("brake = "); Serial.println(brakeMotor);
 }
-    
+*/
+
   }
   if( bitRead(state_machine,0) == true )   // Green status: pulse servos
   {
@@ -149,6 +155,7 @@ if (debug == 1)
   {
      digitalWrite(GREEN_LED, LOW);
      digitalWrite(RED_LED, HIGH);
+     digitalWrite(BLUE_LED,LOW);
      stopRobot();
   }
 }
@@ -165,7 +172,14 @@ void motor_setValues (int throttle, int steering, int brake)
      throttleMotorVal = map(throttle,100,0, MOTOR_VALUE_THROTTLE_MAX, MOTOR_VALUE_THROTTLE_MIN );
      
      if ( bitRead(state_machine,1) == true )   // turbo boost on
+     {
         throttleMotorVal = MOTOR_VALUE_THROTTLE_TURBO; 
+        digitalWrite(BLUE_LED, HIGH);
+     }
+     else
+     {
+        digitalWrite(BLUE_LED,LOW);
+     }
   }
   
   if (steering == 0)
@@ -187,13 +201,13 @@ void motor_setValues (int throttle, int steering, int brake)
 
   if(debug == 1)
   { 
-    /*
+    
      Serial.print("throttleMotorVal = "); Serial.print(throttleMotorVal);
      Serial.print("\t");
      Serial.print("steeringMotorVal = "); Serial.print(steeringMotorVal);
      Serial.print("\t");
      Serial.print("brakeMotorVal = "); Serial.println(brakeMotorVal);
-     */
+     
   }
   else
   {
@@ -201,8 +215,6 @@ void motor_setValues (int throttle, int steering, int brake)
     steeringMotor.write(steeringMotorVal);
     brakeMotor.write(brakeMotorVal);
   }
-
-
 }
 
 void stopRobot ()
