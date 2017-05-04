@@ -42,10 +42,13 @@ const int MOTOR_PIN_STEERING = 8;
 const int MOTOR_PIN_BRAKE = 7;
 
 const int MOTOR_VALUE_MIN = 0;
-const int MOTOR_VALUE_CENTER = 90;     // servo position for center position
+const int MOTOR_VALUE_CENTER = 90;         // servo position for center position
 const int MOTOR_VALUE_MAX = 180;
-const int MOTOR_VALUE_BRAKE = 45;      // servo position for full braking
+const int MOTOR_VALUE_BRAKE = 45;          // servo position for full braking
 const int MOTOR_VALUE_THROTTLE_ZERO = 0;
+const int MOTOR_VALUE_THROTTLE_MIN = 0;
+const int MOTOR_VALUE_THROTTLE_MAX = 70;     // maximum non-turbo throttle limit
+const int MOTOR_VALUE_THROTTLE_TURBO = 100;  // maximum turbo boost throttle limit
 
 const int NUMBER_OF_BYTES_IN_A_COMMAND = 8;
 const int SERIAL_COMMAND_SET_CMD = 252;
@@ -103,22 +106,26 @@ void loop()
 //  if(debug == 1)
 //    Serial.println( incomingByte);
 
-    if(SERIAL_COMMAND_SET_CMD == incomingByte)
-    {
-       state_machine = Serial.read();
-    }
-    if(SERIAL_COMMAND_SET_THROTTLE == incomingByte)
-    { 
-      throttleMotor = Serial.read();
-    }
-    if(SERIAL_COMMAND_SET_STEERING_POS == incomingByte)
-    {
-      steeringMotor = Serial.read();
-    }
-    if(SERIAL_COMMAND_SET_BRAKE_POS == incomingByte)
-    {
-      brakeMotor = Serial.read();
-    }
+   switch (incomingByte)
+   {
+     case SERIAL_COMMAND_SET_CMD:
+     {
+        state_machine = Serial.read();
+     }
+     case  SERIAL_COMMAND_SET_THROTTLE:
+     {
+        throttleMotor = Serial.read();
+     }
+     case SERIAL_COMMAND_SET_STEERING_POS:
+     {
+        steeringMotor = Serial.read();
+     }
+     case SERIAL_COMMAND_SET_BRAKE_POS:
+     {
+        brakeMotor = Serial.read();
+     }
+   }
+
 
 if (debug == 1)
 {
@@ -155,7 +162,10 @@ void motor_setValues (int throttle, int steering, int brake)
   }
   else
   {
-     throttleMotorVal = map(throttle,100,0,MOTOR_VALUE_MAX,MOTOR_VALUE_MIN);
+     throttleMotorVal = map(throttle,100,0, MOTOR_VALUE_THROTTLE_MAX, MOTOR_VALUE_THROTTLE_MIN );
+     
+     if ( bitRead(state_machine,1) == true )   // turbo boost on
+        throttleMotorVal = MOTOR_VALUE_THROTTLE_TURBO; 
   }
   
   if (steering == 0)
@@ -174,15 +184,16 @@ void motor_setValues (int throttle, int steering, int brake)
   {
      brakeMotorVal = map(brake,-100,0,MOTOR_VALUE_MIN,MOTOR_VALUE_MAX);
   }
-/*
+
   if(debug == 1)
-  {
+  { 
+    /*
      Serial.print("throttleMotorVal = "); Serial.print(throttleMotorVal);
      Serial.print("\t");
      Serial.print("steeringMotorVal = "); Serial.print(steeringMotorVal);
      Serial.print("\t");
      Serial.print("brakeMotorVal = "); Serial.println(brakeMotorVal);
-     
+     */
   }
   else
   {
@@ -190,7 +201,7 @@ void motor_setValues (int throttle, int steering, int brake)
     steeringMotor.write(steeringMotorVal);
     brakeMotor.write(brakeMotorVal);
   }
-*/
+
 
 }
 
