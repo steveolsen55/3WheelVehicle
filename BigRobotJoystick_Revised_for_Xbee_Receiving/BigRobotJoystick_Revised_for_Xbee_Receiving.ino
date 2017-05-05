@@ -45,7 +45,8 @@ const int MOTOR_PIN_BRAKE = 7;
 const int MOTOR_VALUE_MIN = 0;
 const int MOTOR_VALUE_CENTER = 90;         // servo position for center position
 const int MOTOR_VALUE_MAX = 180;
-const int MOTOR_VALUE_BRAKE = 45;          // servo position for full braking
+const int MOTOR_VALUE_FULL_BRAKE = 45;          // servo position for full braking
+const int MOTOR_VALUE_NO_BRAKE = 90;
 const int MOTOR_VALUE_THROTTLE_ZERO = 0;
 const int MOTOR_VALUE_THROTTLE_MIN = 0;
 const int MOTOR_VALUE_THROTTLE_MAX = 70;     // maximum non-turbo throttle limit
@@ -59,7 +60,7 @@ const int SERIAL_COMMAND_SET_BRAKE_POS = 255;
 
 const long SERIAL_DATA_SPEED_BPS = 57600;   // Baud rate = 57600 for Capstone Xbee's
 
-byte debug = 0;      //  set to 1 to send debug output to Serial Monitor
+byte debug = 1;      //  set to 1 to send debug output to Serial Monitor
 
 int throttleMotorVal;
 int steeringMotorVal;
@@ -200,18 +201,16 @@ void motor_setValues (int throttle, int steering, int brake)
   }
   else
   {
-     brakeMotorVal = map(brake,-100,0,MOTOR_VALUE_MIN,MOTOR_VALUE_MAX);
+     brakeMotorVal = map(brake,-100,0,MOTOR_VALUE_NO_BRAKE,MOTOR_VALUE_FULL_BRAKE);
   }
 
   if(debug == 1)
   { 
-    
      Serial.print("throttleMotorVal = "); Serial.print(throttleMotorVal);
      Serial.print("\t");
      Serial.print("steeringMotorVal = "); Serial.print(steeringMotorVal);
      Serial.print("\t");
-     Serial.print("brakeMotorVal = "); Serial.println(brakeMotorVal);
-     
+     Serial.print("brakeMotorVal = "); Serial.println(brakeMotorVal);  
   }
   else
   {
@@ -225,7 +224,7 @@ void stopRobot ()
 {
    throttleMotor.write(MOTOR_VALUE_THROTTLE_ZERO);
    steeringMotor.write(MOTOR_VALUE_CENTER);
-   brakeMotor.write(MOTOR_VALUE_BRAKE);
+   brakeMotor.write(MOTOR_VALUE_FULL_BRAKE);
 }
   
   
