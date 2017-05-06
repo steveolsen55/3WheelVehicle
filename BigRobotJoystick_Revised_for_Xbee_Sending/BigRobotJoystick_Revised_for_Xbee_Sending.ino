@@ -57,10 +57,10 @@ int throttleServoVal;    // value to send for throttle servo speed control
 int steeringServoVal;    // value to send for steering servo position control
 int brakeServoVal;       // value to send for brake servo position control
 
-byte state_machine = 0x00;   // binary 00 = Robot OFF.    Set bit 0 to enable Robot.
-// bit 1 = turbo enable.
-// TBD - add bits for turbo boost, headlights, ??
-// This variable tracks the status of the overall state machine
+byte state_machine = 0x00;   // bit 0 = enable Robot.
+                             // bit 1 = enable turbo.
+                             // TBD - add bits for headlights, ??
+                             // This variable tracks the status of the overall state machine
 
 boolean turnOnOff = false;   //  false == 0, true != 0    initially: robot OFF
 int valButton;               // variable for reading the button pin status
@@ -223,27 +223,22 @@ void SendNewMotorValues(char throttle, char steering, char brake, byte statemach
 
 int readButton()
 {
-  unsigned long contactTime;           // local variable; contactTime declared
-  valButton = digitalRead(BUTTON);     // Read the pushbutton on an digital pin
+  unsigned long contactTime;          // local variable; contactTime declared
+  valButton = digitalRead(BUTTON);    // Read the pushbutton on an digital pin
 
-  if (valButton == HIGH)               // Since 5V will produce a HIGH --> means button not pushed
-    return turnOnOff;                  // return the value of turnOnOff without changing it
+  if (valButton == HIGH)              // Since 5V will produce a HIGH --> means button not pushed
+    return turnOnOff;                 // return the value of turnOnOff without changing it
 
-  contactTime = millis();              // set contactTime = to the millis() clock value
-  while (valButton == LOW)             // button pressed produces a LOW while the pushbutton is pushed
+  contactTime = millis();             // set contactTime = to the millis() clock value
+  while (valButton == LOW)            // button pressed produces a LOW while the pushbutton is pushed
   {
-    valButton = digitalRead(BUTTON);   // read the button value again and keep reading until valButton is HIGH again
+    valButton = digitalRead(BUTTON);  // read the button value again and keep reading until valButton is HIGH again
   }
 
-  if (millis() - contactTime < 20)     // If the button is held for less than 20 ms
-    return turnOnOff;                  // return the turnOnOff value unchanged
+  if (millis() - contactTime < 20)    // If the button is held for less than 20 ms
+    return turnOnOff;                 // return the turnOnOff value unchanged
 
-  return (1 - turnOnOff);              // if the button is held longer than 20 ms then change the turnOnOff
-  // to the opposite value to what it was
+  return (1 - turnOnOff);             // if the button is held longer than 20 ms then change the turnOnOff
+                                      // to the opposite value to what it was
 }
-
-
-
-
-
 
