@@ -38,9 +38,9 @@ const byte RED_LED = 3;      // robot OFF
 const byte GREEN_LED = 4;    // robot ON
 const byte BLUE_LED = 5;     // turbo ON
 
-const int MOTOR_PIN_THROTTLE = 9;
-const int MOTOR_PIN_STEERING = 8;
-const int MOTOR_PIN_BRAKE = 7;
+const int MOTOR_PIN_THROTTLE = 10;
+const int MOTOR_PIN_STEERING = 11;
+const int MOTOR_PIN_BRAKE = 12;
 
 const int MOTOR_VALUE_MIN = 0;
 const int MOTOR_VALUE_CENTER = 90;         // servo position for center position
@@ -101,7 +101,6 @@ void loop()
   static char steeringMotor = 0;
   static char brakeMotor = 0;
 
-  
 //  if(debug == 1)
 //      Serial.println( Serial.available());
 
@@ -136,7 +135,6 @@ void loop()
      }
    }
 
-/*
 if (debug == 1)
 {
    Serial.print("state_machine ="); Serial.print(state_machine, BIN);
@@ -147,7 +145,6 @@ if (debug == 1)
    Serial.print("\t");
    Serial.print("brake = "); Serial.println(brakeMotor);
 }
-*/
 
   }
   if( bitRead(state_machine,0) == true )   // Green status: pulse servos
@@ -205,12 +202,12 @@ void motor_setValues (int throttle, int steering, int brake)
   }
 
   if(debug == 1)
-  { 
-     Serial.print("throttleMotorVal = "); Serial.print(throttleMotorVal);
+  {  /*
+     Serial.print("throttle = "); Serial.print(throttleMotorVal);
      Serial.print("\t");
-     Serial.print("steeringMotorVal = "); Serial.print(steeringMotorVal);
+     Serial.print("steering = "); Serial.print(steeringMotorVal);
      Serial.print("\t");
-     Serial.print("brakeMotorVal = "); Serial.println(brakeMotorVal);  
+     Serial.print("brake = "); Serial.println(brakeMotorVal);   */
   }
   else
   {
