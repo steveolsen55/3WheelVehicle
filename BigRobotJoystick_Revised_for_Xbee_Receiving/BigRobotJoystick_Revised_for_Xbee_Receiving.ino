@@ -45,24 +45,24 @@ const int MOTOR_PIN_BRAKE = 12;
 const int MOTOR_VALUE_MIN = 0;
 const int MOTOR_VALUE_CENTER = 90;         // servo position for center position
 const int MOTOR_VALUE_MAX = 180;
-const int MOTOR_VALUE_FULL_BRAKE = 45;          // servo position for full braking
-const int MOTOR_VALUE_NO_BRAKE = 90;
-const int MOTOR_VALUE_THROTTLE_ZERO = 0;
-const int MOTOR_VALUE_THROTTLE_MIN = 0;
+const int MOTOR_VALUE_FULL_BRAKE = 45;       // servo position for full braking
+const int MOTOR_VALUE_NO_BRAKE = 90;         // servo position for no brake applied
+const int MOTOR_VALUE_THROTTLE_ZERO = 0;     // electronic speed control input value for throttle off
+const int MOTOR_VALUE_THROTTLE_MIN = 0;      // electronic speed control input value for minimum thrust
 const int MOTOR_VALUE_THROTTLE_MAX = 70;     // maximum non-turbo throttle limit
-const int MOTOR_VALUE_THROTTLE_TURBO = 100;  // maximum turbo boost throttle limit
+const int MOTOR_VALUE_THROTTLE_TURBO = 100;  // maximum turbo boosted throttle limit
 
 const int NUMBER_OF_BYTES_IN_A_COMMAND = 8;
-const int SERIAL_COMMAND_SET_CMD = 252;
-const int SERIAL_COMMAND_SET_THROTTLE = 253;
-const int SERIAL_COMMAND_SET_STEERING_POS = 254;
-const int SERIAL_COMMAND_SET_BRAKE_POS = 255;
+const int SERIAL_COMMAND_SET_CMD = 252;          // serial data code - next byte is a command byte
+const int SERIAL_COMMAND_SET_THROTTLE = 253;     // serial data code - next byte is throttle setting 
+const int SERIAL_COMMAND_SET_STEERING_POS = 254; // serial data code - next byte is steering position 
+const int SERIAL_COMMAND_SET_BRAKE_POS = 255;    // serial data code - next byte is brake setting
 
 const long SERIAL_DATA_SPEED_BPS = 57600;   // Baud rate = 57600 for Capstone Xbee's
 
 byte debug = 1;      //  set to 1 to send debug output to Serial Monitor
 
-int throttleMotorVal;
+int throttleMotorVal;       // 
 int steeringMotorVal;
 int brakeMotorVal;
 
