@@ -169,18 +169,18 @@ void loop()
        digitalWrite(GREEN_LED, LOW);                   // turn off the robot enabled light
        digitalWrite(RED_LED, HIGH);                    // turn on the robot disabled light
     }
-/*  
+  
     if (debug == 1)
     {
       Serial.print("state_machine ="); Serial.print(state_machine, BIN);
       Serial.print("\t");
-      Serial.print("throttle = "); Serial.print(throttleMotor);
+      Serial.print("throttle = "); Serial.print(throttleMotor,DEC);
       Serial.print("\t");
-      Serial.print("steering = "); Serial.print(steeringMotor);
+      Serial.print("steering = "); Serial.print(steeringMotor,DEC);
       Serial.print("\t");
-      Serial.print("brake = "); Serial.println(brakeMotor);
+      Serial.print("brake = "); Serial.println(brakeMotor,DEC);
     }
-*/
+
   }
   if ( bitRead(state_machine, 0) == true ) // Green status: pulse servos
   {
@@ -238,11 +238,11 @@ void motor_setValues (int throttle, int steering, int brake)
 
   if (debug == 1)
   { 
-     Serial.print("throttle = "); Serial.print(throttleMotorVal);
+/*     Serial.print("throttle = "); Serial.print(throttleMotorVal);
      Serial.print("\t");
      Serial.print("steering = "); Serial.print(steeringMotorVal);
      Serial.print("\t");
-     Serial.print("brake = "); Serial.println(brakeMotorVal);
+     Serial.print("brake = "); Serial.println(brakeMotorVal);   */
   }
   else
   {
