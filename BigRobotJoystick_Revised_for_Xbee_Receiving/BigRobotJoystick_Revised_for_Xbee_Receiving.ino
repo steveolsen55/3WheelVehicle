@@ -58,6 +58,8 @@ const int SERIAL_COMMAND_SET_THROTTLE = 253;     // serial data code - next byte
 const int SERIAL_COMMAND_SET_STEERING_POS = 254; // serial data code - next byte is steering position
 const int SERIAL_COMMAND_SET_BRAKE_POS = 255;    // serial data code - next byte is brake setting
 
+const int COMM_LOSS_LIMIT = 200;     //  If no data acquired in 200 ms ==>  loss of communication
+
 const long SERIAL_DATA_SPEED_BPS = 57600;   // Baud rate = 57600 for Capstone Xbee's
 
 byte debug = 1;      //  set to 1 to send debug output to Serial Monitor
@@ -69,6 +71,8 @@ int brakeMotorVal;
 byte state_machine = 0x00;  //  Bit 0 = Robot enabled, set for ON, clear for OFF
 //  Bit 1 = turbo boost, set for ON, clear for OFF
 //  Set each bit to 1 when on.  This var tracks the state machine status.
+
+long communication_loss_timer;    // How long has it been with Serial.available = 0?
 
 void setup()
 {
@@ -92,6 +96,8 @@ void setup()
   delay (10);
   throttleMotor.write(0);
 
+  communication_loss_timer = millis();
+  
   Serial.begin(SERIAL_DATA_SPEED_BPS);
 }
 
@@ -101,6 +107,7 @@ void loop()
   static char steeringMotor = 0;
   static char brakeMotor = 0;
 
+  
   //  if(debug == 1)
   //      Serial.println( Serial.available());
 
@@ -120,24 +127,28 @@ void loop()
         }
       case  SERIAL_COMMAND_SET_THROTTLE:
         {
-          throttleMotor = Serial.read();
-          break;
-        }
+         throttleMotor = Serial.read();
+         break;
+      }
       case SERIAL_COMMAND_SET_STEERING_POS:
-        {
-          steeringMotor = Serial.read();
-          break;
-        }
+      {
+        steeringMotor = Serial.read();
+        break;
+      }
       case SERIAL_COMMAND_SET_BRAKE_POS:
-        {
-          brakeMotor = Serial.read();
-          break;
-        }
+      {
+         brakeMotor = Serial.read();
+         break;
+      }
+      communication_loss_timer = millis();
     }
-    if (Serial.available() == 0)
+    if ( communication_loss_timer > COMM_LOSS_LIMIT )
     {
-      throttleMotor = 0;
-      brakeMotor = 45;
+       stopRobot(); 
+    }
+    else
+    {
+            
     }
   
   if (debug == 1)
