@@ -21,10 +21,7 @@
       Braking will be provided by servo controlled mechanical brake on the rear wheel.
       Steering is provided by servo controlled rack and pinnion steering mechanism on the front wheels.
 
-      TBD - Turbo boost control, to provide full speed boost on straight segments
-          - EDF / ECS throttle limit, proportionally to turn rate, max un-boosted limit TBD
-          - Loss of communication must set throttle to zero and apply brakes.
-
+      TBD - EDF / ECS throttle limit, proportionally to turn rate, max un-boosted limit TBD
 
 */
 
@@ -106,7 +103,6 @@ void loop()
   static char throttleMotor = 0;
   static char steeringMotor = 0;
   static char brakeMotor = 0;
-
   
   //  if(debug == 1)
   //      Serial.println( Serial.available());
@@ -121,12 +117,12 @@ void loop()
     switch (incomingByte)
     {
       case SERIAL_COMMAND_SET_CMD:
-        {
+      {
           state_machine = Serial.read();
           break;
-        }
+      }
       case  SERIAL_COMMAND_SET_THROTTLE:
-        {
+      {
          throttleMotor = Serial.read();
          break;
       }
@@ -144,38 +140,40 @@ void loop()
     }
     if ( communication_loss_timer > COMM_LOSS_LIMIT )
     {
-       stopRobot(); 
-    }
-    else
-    {
-            
+       stopRobot();                                    // stop the robot immediately
+       bitClear(state_machine, 0);                     // clear the robot enabled bit
+       throttleMotorVal = MOTOR_VALUE_THROTTLE_ZERO;   // set the throttle var to off 
+       steeringMotorVal = MOTOR_VALUE_CENTER;          // center the steering servo var
+       brakeMotorVal = MOTOR_VALUE_FULL_BRAKE;         // set brake var to full brake
+       digitalWrite(GREEN_LED, LOW);                   // turn off the robot enabled light
+       digitalWrite(RED_LED, HIGH);                    // turn on the robot disabled light
     }
   
-  if (debug == 1)
-  {
-    Serial.print("state_machine ="); Serial.print(state_machine, BIN);
-    Serial.print("\t");
-    Serial.print("throttle = "); Serial.print(throttleMotor);
-    Serial.print("\t");
-    Serial.print("steering = "); Serial.print(steeringMotor);
-    Serial.print("\t");
-    Serial.print("brake = "); Serial.println(brakeMotor);
-  }
+    if (debug == 1)
+    {
+      Serial.print("state_machine ="); Serial.print(state_machine, BIN);
+      Serial.print("\t");
+      Serial.print("throttle = "); Serial.print(throttleMotor);
+      Serial.print("\t");
+      Serial.print("steering = "); Serial.print(steeringMotor);
+      Serial.print("\t");
+      Serial.print("brake = "); Serial.println(brakeMotor);
+    }
 
-}
-if ( bitRead(state_machine, 0) == true ) // Green status: pulse servos
-{
-  digitalWrite(GREEN_LED, HIGH);
-  digitalWrite(RED_LED, LOW);
-  motor_setValues(throttleMotor, steeringMotor, brakeMotor);
-}
-if ( bitRead(state_machine, 0) == false )  //  All Stop!!
-{
-  digitalWrite(GREEN_LED, LOW);
-  digitalWrite(RED_LED, HIGH);
-  digitalWrite(BLUE_LED, LOW);
-  stopRobot();
-}
+  }
+  if ( bitRead(state_machine, 0) == true ) // Green status: pulse servos
+  {
+    digitalWrite(GREEN_LED, HIGH);
+    digitalWrite(RED_LED, LOW);
+    motor_setValues(throttleMotor, steeringMotor, brakeMotor);
+  }
+  if ( bitRead(state_machine, 0) == false )  //  All Stop!!
+  {
+    digitalWrite(GREEN_LED, LOW);
+    digitalWrite(RED_LED, HIGH);
+    digitalWrite(BLUE_LED, LOW);
+    stopRobot();
+  }
 }
 //************************ Subroutines ****************************
 
