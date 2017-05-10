@@ -76,10 +76,31 @@ void setup()
   pinMode(RED_LED, OUTPUT);
   pinMode(GREEN_LED, OUTPUT);
   pinMode(BLUE_LED, OUTPUT);
+
+  for (int i = 0; i<4; i++)
+  {
+    digitalWrite(RED_LED, LOW);
+    digitalWrite(GREEN_LED, LOW);
+    digitalWrite(BLUE_LED, LOW);
+    delay(100);
+    digitalWrite(RED_LED, HIGH);
+    digitalWrite(GREEN_LED, LOW);
+    digitalWrite(BLUE_LED, LOW);
+    delay(100);
+    digitalWrite(RED_LED, LOW);
+    digitalWrite(GREEN_LED, HIGH);
+    digitalWrite(BLUE_LED, LOW);
+    delay(100);
+    digitalWrite(RED_LED, LOW);
+    digitalWrite(GREEN_LED, LOW);
+    digitalWrite(BLUE_LED, HIGH);
+    delay(100);
+  }
+
   digitalWrite(GREEN_LED, LOW);
   digitalWrite(RED_LED, HIGH);
   digitalWrite(BLUE_LED, LOW);
-
+    
   throttleMotor.attach(MOTOR_PIN_THROTTLE);
   steeringMotor.attach (MOTOR_PIN_STEERING);
   brakeMotor.attach(MOTOR_PIN_BRAKE);
@@ -148,7 +169,7 @@ void loop()
        digitalWrite(GREEN_LED, LOW);                   // turn off the robot enabled light
        digitalWrite(RED_LED, HIGH);                    // turn on the robot disabled light
     }
-  
+/*  
     if (debug == 1)
     {
       Serial.print("state_machine ="); Serial.print(state_machine, BIN);
@@ -159,7 +180,7 @@ void loop()
       Serial.print("\t");
       Serial.print("brake = "); Serial.println(brakeMotor);
     }
-
+*/
   }
   if ( bitRead(state_machine, 0) == true ) // Green status: pulse servos
   {
@@ -185,7 +206,7 @@ void motor_setValues (int throttle, int steering, int brake)
   }
   else
   {
-    throttleMotorVal = map(throttle, 100, 0, MOTOR_VALUE_THROTTLE_MAX, MOTOR_VALUE_THROTTLE_MIN );
+    throttleMotorVal = map(throttle,0,100,MOTOR_VALUE_THROTTLE_MIN,MOTOR_VALUE_THROTTLE_MAX );
 
     if ( bitRead(state_machine, 1) == true )  // turbo boost on
     {
@@ -216,12 +237,12 @@ void motor_setValues (int throttle, int steering, int brake)
   }
 
   if (debug == 1)
-  { /*
-      Serial.print("throttle = "); Serial.print(throttleMotorVal);
-      Serial.print("\t");
-      Serial.print("steering = "); Serial.print(steeringMotorVal);
-      Serial.print("\t");
-      Serial.print("brake = "); Serial.println(brakeMotorVal);   */
+  { 
+     Serial.print("throttle = "); Serial.print(throttleMotorVal);
+     Serial.print("\t");
+     Serial.print("steering = "); Serial.print(steeringMotorVal);
+     Serial.print("\t");
+     Serial.print("brake = "); Serial.println(brakeMotorVal);
   }
   else
   {
