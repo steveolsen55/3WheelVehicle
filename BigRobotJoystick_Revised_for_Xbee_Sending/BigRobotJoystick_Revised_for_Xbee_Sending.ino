@@ -41,7 +41,7 @@ const int DEAD_ZONE = 5;    //  narrow deadzone near joystick centered position
 
 const unsigned long TIME_BETWEEN_GET_DATA = 100;    // 100ms.  perhaps reduce to 50?
 
-const long SERIAL_DATA_SPEED_BPS = 57600;     //  baud rate = 57600 for Capstone Xbee's
+const long SERIAL_DATA_SPEED_BPS = 38400;     //  baud rate for Capstone Xbee's
 
 int debug = 0;        //  set to 1 for debug output on Serial Monitor
 
@@ -78,8 +78,8 @@ void setup()
   digitalWrite(GREEN_LED, LOW);   // turn off the Green LED
   bitClear(state_machine, 0);     // Robot OFF mode
 
-  UDcenter = analogRead(JOYSTICK_Y);     //  initialize the centered value
-  LRcenter = analogRead(JOYSTICK_X);     //  initialize the centered value
+  UDcenter = analogRead(JOYSTICK_Y);     //  initialize the centered joystick value
+  LRcenter = analogRead(JOYSTICK_X);     //  initialize the centered joystick value
 
   Serial.begin(SERIAL_DATA_SPEED_BPS);   // enable serial communication
   previousTime = millis();               // initialize the time count
@@ -88,6 +88,8 @@ void setup()
 void loop()
 {
   turnOnOff = readButton();    // read button input value - subroutine near bottom of this code
+//  Serial.print("turnOnOff ="); Serial.println(turnOnOff);
+  
   bitClear(state_machine, 1);  //  make sure turbo boost bit is clear
   
   if (turnOnOff == true)       //  Robot ON state
