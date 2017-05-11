@@ -49,7 +49,7 @@ const int MOTOR_VALUE_THROTTLE_MIN = 0;      // electronic speed control input v
 const int MOTOR_VALUE_THROTTLE_MAX = 70;     // maximum non-turbo throttle limit
 const int MOTOR_VALUE_THROTTLE_TURBO = 100;  // maximum turbo boosted throttle limit
 
-const int NUMBER_OF_BYTES_IN_A_COMMAND = 8;
+const int NUMBER_OF_BYTES_IN_A_COMMAND = 0;
 const int SERIAL_COMMAND_SET_CMD = 252;          // serial data code - next byte is a command byte
 const int SERIAL_COMMAND_SET_THROTTLE = 253;     // serial data code - next byte is throttle setting
 const int SERIAL_COMMAND_SET_STEERING_POS = 254; // serial data code - next byte is steering position
@@ -57,7 +57,7 @@ const int SERIAL_COMMAND_SET_BRAKE_POS = 255;    // serial data code - next byte
 
 const int COMM_LOSS_LIMIT = 200;     //  If no data acquired in 200 ms ==>  loss of communication
 
-const long SERIAL_DATA_SPEED_BPS = 57600;   // Baud rate = 57600 for Capstone Xbee's
+const long SERIAL_DATA_SPEED_BPS = 38400;   // Baud rate for Capstone Xbee's
 
 byte debug = 1;      //  set to 1 to send debug output to Serial Monitor
 
@@ -66,8 +66,8 @@ int steeringMotorVal;
 int brakeMotorVal;
 
 byte state_machine = 0x00;  //  Bit 0 = Robot enabled, set for ON, clear for OFF
-//  Bit 1 = turbo boost, set for ON, clear for OFF
-//  Set each bit to 1 when on.  This var tracks the state machine status.
+                            //  Bit 1 = turbo boost, set for ON, clear for OFF
+                            //  Set each bit to 1 when on.  This var tracks the state machine status.
 
 long communication_loss_timer;    // How long has it been with Serial.available = 0?
 
@@ -77,33 +77,16 @@ void setup()
   pinMode(GREEN_LED, OUTPUT);
   pinMode(BLUE_LED, OUTPUT);
 
-  for (int i = 0; i<4; i++)
-  {
-    digitalWrite(RED_LED, LOW);
-    digitalWrite(GREEN_LED, LOW);
-    digitalWrite(BLUE_LED, LOW);
-    delay(100);
-    digitalWrite(RED_LED, HIGH);
-    digitalWrite(GREEN_LED, LOW);
-    digitalWrite(BLUE_LED, LOW);
-    delay(100);
-    digitalWrite(RED_LED, LOW);
-    digitalWrite(GREEN_LED, HIGH);
-    digitalWrite(BLUE_LED, LOW);
-    delay(100);
-    digitalWrite(RED_LED, LOW);
-    digitalWrite(GREEN_LED, LOW);
-    digitalWrite(BLUE_LED, HIGH);
-    delay(100);
-  }
+  flashLEDs();     //  cycle through the LEDs so we know they all work
 
   digitalWrite(GREEN_LED, LOW);
-  digitalWrite(RED_LED, HIGH);
+  digitalWrite(RED_LED, HIGH);      //  set Red LED on to show robot is disabled
   digitalWrite(BLUE_LED, LOW);
     
   throttleMotor.attach(MOTOR_PIN_THROTTLE);
   steeringMotor.attach (MOTOR_PIN_STEERING);
   brakeMotor.attach(MOTOR_PIN_BRAKE);
+
   stopRobot();
 
   //  -->>  initialize the Electronic Speed Controller (ESC) here <<--
@@ -121,12 +104,9 @@ void setup()
 
 void loop()
 {
-  static char throttleMotor = 0;
-  static char steeringMotor = 0;
-  static char brakeMotor = 0;
-  
-  //  if(debug == 1)
-  //      Serial.println( Serial.available());
+
+  if(debug == 1)
+     Serial.println( Serial.available());
 
   if (Serial.available() >= NUMBER_OF_BYTES_IN_A_COMMAND)
   {
@@ -144,17 +124,17 @@ void loop()
       }
       case  SERIAL_COMMAND_SET_THROTTLE:
       {
-         throttleMotor = Serial.read();
+         throttleMotorVal = Serial.read();
          break;
       }
       case SERIAL_COMMAND_SET_STEERING_POS:
       {
-        steeringMotor = Serial.read();
+        steeringMotorVal = Serial.read();
         break;
       }
       case SERIAL_COMMAND_SET_BRAKE_POS:
       {
-         brakeMotor = Serial.read();
+         brakeMotorVal = Serial.read();
          break;
       }
       communication_loss_timer = millis();
@@ -169,24 +149,24 @@ void loop()
        digitalWrite(GREEN_LED, LOW);                   // turn off the robot enabled light
        digitalWrite(RED_LED, HIGH);                    // turn on the robot disabled light
     }
-  
+ /* 
     if (debug == 1)
     {
       Serial.print("state_machine ="); Serial.print(state_machine, BIN);
       Serial.print("\t");
-      Serial.print("throttle = "); Serial.print(throttleMotor,DEC);
+      Serial.print("throttle = "); Serial.print(throttleMotorVal,DEC);
       Serial.print("\t");
-      Serial.print("steering = "); Serial.print(steeringMotor,DEC);
+      Serial.print("steering = "); Serial.print(steeringMotorVal,DEC);
       Serial.print("\t");
-      Serial.print("brake = "); Serial.println(brakeMotor,DEC);
+      Serial.print("brake = "); Serial.println(brakeMotorVal,DEC);
     }
-
+*/
   }
   if ( bitRead(state_machine, 0) == true ) // Green status: pulse servos
   {
     digitalWrite(GREEN_LED, HIGH);
     digitalWrite(RED_LED, LOW);
-    motor_setValues(throttleMotor, steeringMotor, brakeMotor);
+    motor_setValues(throttleMotorVal, steeringMotorVal, brakeMotorVal);
   }
   if ( bitRead(state_machine, 0) == false )  //  All Stop!!
   {
@@ -259,4 +239,26 @@ void stopRobot ()
   brakeMotor.write(MOTOR_VALUE_FULL_BRAKE);
 }
 
+void flashLEDs ()
+{
+  for (int i = 0; i<4; i++)
+  {
+    digitalWrite(RED_LED, LOW);
+    digitalWrite(GREEN_LED, LOW);
+    digitalWrite(BLUE_LED, LOW);
+    delay(100);
+    digitalWrite(RED_LED, HIGH);
+    digitalWrite(GREEN_LED, LOW);
+    digitalWrite(BLUE_LED, LOW);
+    delay(100);
+    digitalWrite(RED_LED, LOW);
+    digitalWrite(GREEN_LED, HIGH);
+    digitalWrite(BLUE_LED, LOW);
+    delay(100);
+    digitalWrite(RED_LED, LOW);
+    digitalWrite(GREEN_LED, LOW);
+    digitalWrite(BLUE_LED, HIGH);
+    delay(100);
+  }
+}
 
