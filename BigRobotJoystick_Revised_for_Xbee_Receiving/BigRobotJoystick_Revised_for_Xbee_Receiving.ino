@@ -49,7 +49,7 @@ const int MOTOR_VALUE_THROTTLE_MIN = 0;      // electronic speed control input v
 const int MOTOR_VALUE_THROTTLE_MAX = 70;     // maximum non-turbo throttle limit
 const int MOTOR_VALUE_THROTTLE_TURBO = 100;  // maximum turbo boosted throttle limit
 
-const int NUMBER_OF_BYTES_IN_A_COMMAND = 0;
+const int NUMBER_OF_BYTES_IN_A_COMMAND = 8;      // serial data packet is 8 bytes 
 const int SERIAL_COMMAND_SET_CMD = 252;          // serial data code - next byte is a command byte
 const int SERIAL_COMMAND_SET_THROTTLE = 253;     // serial data code - next byte is throttle setting
 const int SERIAL_COMMAND_SET_STEERING_POS = 254; // serial data code - next byte is steering position
@@ -68,6 +68,10 @@ int brakeMotorVal;
 byte state_machine = 0x00;  //  Bit 0 = Robot enabled, set for ON, clear for OFF
                             //  Bit 1 = turbo boost, set for ON, clear for OFF
                             //  Set each bit to 1 when on.  This var tracks the state machine status.
+
+char incomingBytes[NUMBER_OF_BYTES_IN_A_COMMAND];    // char type holds signed values -128 to 127
+
+boolean dataAcquired = false;   //  did read_Serial_Data receive data?
 
 long communication_loss_timer;    // How long has it been with Serial.available = 0?
 
@@ -104,51 +108,8 @@ void setup()
 
 void loop()
 {
-
-  if(debug == 1)
-     Serial.println( Serial.available());
-
-  if (Serial.available() >= NUMBER_OF_BYTES_IN_A_COMMAND)
-  {
-    int incomingByte = Serial.read();
-
-    //  if(debug == 1)
-    //    Serial.println( incomingByte);
-
-    switch (incomingByte)
-    {
-      case SERIAL_COMMAND_SET_CMD:
-      {
-          state_machine = Serial.read();
-          break;
-      }
-      case  SERIAL_COMMAND_SET_THROTTLE:
-      {
-         throttleMotorVal = Serial.read();
-         break;
-      }
-      case SERIAL_COMMAND_SET_STEERING_POS:
-      {
-        steeringMotorVal = Serial.read();
-        break;
-      }
-      case SERIAL_COMMAND_SET_BRAKE_POS:
-      {
-         brakeMotorVal = Serial.read();
-         break;
-      }
-      communication_loss_timer = millis();
-    }
-    if ( communication_loss_timer > COMM_LOSS_LIMIT )
-    {
-       stopRobot();                                    // stop the robot immediately
-       bitClear(state_machine, 0);                     // clear the robot enabled bit
-       throttleMotorVal = MOTOR_VALUE_THROTTLE_ZERO;   // set the throttle var to off 
-       steeringMotorVal = MOTOR_VALUE_CENTER;          // center the steering servo var
-       brakeMotorVal = MOTOR_VALUE_FULL_BRAKE;         // set brake var to full brake
-       digitalWrite(GREEN_LED, LOW);                   // turn off the robot enabled light
-       digitalWrite(RED_LED, HIGH);                    // turn on the robot disabled light
-    }
+   dataAcquired = read_Serial_Data();
+   
  /* 
     if (debug == 1)
     {
@@ -161,7 +122,18 @@ void loop()
       Serial.print("brake = "); Serial.println(brakeMotorVal,DEC);
     }
 */
-  }
+
+   if ( communication_loss_timer > COMM_LOSS_LIMIT )
+   {
+      stopRobot();                                    // stop the robot immediately
+      bitClear(state_machine, 0);                     // clear the robot enabled bit
+      throttleMotorVal = MOTOR_VALUE_THROTTLE_ZERO;   // set the throttle var to off 
+      steeringMotorVal = MOTOR_VALUE_CENTER;          // center the steering servo var
+      brakeMotorVal = MOTOR_VALUE_FULL_BRAKE;         // set brake var to full brake
+      digitalWrite(GREEN_LED, LOW);                   // turn off the robot enabled light
+      digitalWrite(RED_LED, HIGH);                    // turn on the robot disabled light
+   }
+  
   if ( bitRead(state_machine, 0) == true ) // Green status: pulse servos
   {
     digitalWrite(GREEN_LED, HIGH);
@@ -175,8 +147,47 @@ void loop()
     digitalWrite(BLUE_LED, LOW);
     stopRobot();
   }
+
+  if (dataAcquired == false)
+  {
+          // Do nothing.  communication_loss_timer will keep lagging behind
+  }   
+  else    // data WAS acquired   
+  {
+     communication_loss_timer = millis();     // reset timer for next loop
+  }   
 }
+
 //************************ Subroutines ****************************
+
+boolean read_Serial_Data()
+{  
+   char garbage;  
+
+   if(debug == 1)
+     Serial.println( Serial.available());
+   
+   if (Serial.available() >= NUMBER_OF_BYTES_IN_A_COMMAND)
+   {
+      while (Serial.peek() != SERIAL_COMMAND_SET_CMD)
+          garbage = Serial.read(); 
+   
+      for ( int i=0; i<NUMBER_OF_BYTES_IN_A_COMMAND; i++)
+      {
+         incomingBytes[i] = Serial.read();
+      }
+
+      state_machine = incomingBytes[1];
+      throttleMotorVal = incomingBytes[3];
+      steeringMotorVal = incomingBytes[5];
+      brakeMotorVal = incomingBytes[7];
+      return (true);
+   }
+   else
+   { 
+      return (false);
+   }   
+}
 
 void motor_setValues (int throttle, int steering, int brake)
 {
@@ -201,19 +212,19 @@ void motor_setValues (int throttle, int steering, int brake)
 
   if (steering == 0)
   {
-    steeringMotorVal = MOTOR_VALUE_CENTER;
+     steeringMotorVal = MOTOR_VALUE_CENTER;
   }
   else
   {
-    steeringMotorVal = map(steering, -100, 100, MOTOR_VALUE_MIN, MOTOR_VALUE_MAX);
+     steeringMotorVal = map(steering, -100, 100, MOTOR_VALUE_MIN, MOTOR_VALUE_MAX);
   }
   if (brake == 0)
   {
-    brakeMotorVal = MOTOR_VALUE_CENTER;
+     brakeMotorVal = MOTOR_VALUE_CENTER;
   }
   else
   {
-    brakeMotorVal = map(brake, -100, 0, MOTOR_VALUE_NO_BRAKE, MOTOR_VALUE_FULL_BRAKE);
+     brakeMotorVal = map(brake, -100, 0, MOTOR_VALUE_NO_BRAKE, MOTOR_VALUE_FULL_BRAKE);
   }
 
   if (debug == 1)
@@ -241,7 +252,7 @@ void stopRobot ()
 
 void flashLEDs ()
 {
-  for (int i = 0; i<4; i++)
+  for (int i = 0; i<3; i++)
   {
     digitalWrite(RED_LED, LOW);
     digitalWrite(GREEN_LED, LOW);
