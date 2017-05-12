@@ -27,6 +27,7 @@ const int X_JOYSTICK_MAX = 1022;
 const int Y_JOYSTICK_MIN = 0;
 const int Y_JOYSTICK_MAX = 1021;
 
+const int NUMBER_OF_BYTES_OUTGOING = 8;
 const int SERIAL_COMMAND_SET_CMD = 252;
 const int SERIAL_COMMAND_SET_THROTTLE = 253;
 const int SERIAL_COMMAND_SET_STEERING_POS = 254;
@@ -64,6 +65,8 @@ byte state_machine = 0x00;   // bit 0 = enable Robot.
 
 boolean turnOnOff = false;   //  false == 0, true != 0    initially: robot OFF
 int valButton;               // variable for reading the button pin status
+
+char outgoingbytes[NUMBER_OF_BYTES_OUTGOING];  // char type holds signed values -128 to 127
 
 unsigned long previousTime;
 
@@ -107,56 +110,55 @@ void loop()
 
   if ( bitRead(state_machine,0) == true )     //  state machine == 'ON', so process the joystick inputs
   {
-    int UDvalue = 0;          //  clear the joystick input vars
-    int LRvalue = 0;
+    int UDinput, LRinput;          // local variables to store joystick inputs
+
     boolean turboval = false;
 
     if (millis() - previousTime >= TIME_BETWEEN_GET_DATA)
     {
-      UDvalue = analogRead(JOYSTICK_Y);   //  read the current joystick input positions
-      LRvalue = analogRead(JOYSTICK_X);   //
-      turboval = digitalRead(TURBO);         //  read postion of button for turbo - normally HIGH unless pressed
+       UDinput = analogRead(JOYSTICK_Y);   //  read the current joystick input positions
+       LRinput = analogRead(JOYSTICK_X);   //
+       turboval = digitalRead(TURBO);      //  read postion of button for turbo - normally HIGH unless pressed
 
-      //   Serial.print("turboval = "); Serial.println(turboval);
+       //   Serial.print("turboval = "); Serial.println(turboval);
 
-      if (turboval)
-      {
-        bitClear(state_machine, 1);
-      }
-      else
-      {
-        bitSet(state_machine, 1);
-      }
+       if (turboval)
+       {
+         bitClear(state_machine, 1);
+       }
+       else
+       {
+         bitSet(state_machine, 1);
+       }
       /*
         if(debug ==1)
         {
-         Serial.print("LRcenter = "); Serial.print(LRcenter);
-         Serial.print("\t");
-         Serial.print("UDcenter = "); Serial.print(UDcenter);
-         Serial.print("\t");
-         Serial.print("LRvalue = "); Serial.print(LRvalue);
-         Serial.print("\t");
-         Serial.print("UDvalue = "); Serial.println(UDvalue);
-
+          Serial.print("LRcenter = "); Serial.print(LRcenter);
+          Serial.print("\t");
+          Serial.print("UDcenter = "); Serial.print(UDcenter);
+          Serial.print("\t");
+          Serial.print("LRvalue = "); Serial.print(LRvalue);
+          Serial.print("\t");
+          Serial.print("UDvalue = "); Serial.println(UDvalue);
         }   */
 
-      if ( UDvalue > UDcenter )
+      if ( UDinput > UDcenter )
       {
-        throttleServoVal = map(UDvalue, UDcenter, Y_JOYSTICK_MAX, 0, 100);
+        throttleServoVal = map(UDinput, UDcenter, Y_JOYSTICK_MAX, 0, 100);
         brakeServoVal = 0;
       }
       else
       {
-        brakeServoVal = map(UDvalue, Y_JOYSTICK_MIN, UDcenter, -105, 0);
+        brakeServoVal = map(UDinput, Y_JOYSTICK_MIN, UDcenter, -105, 0);
         throttleServoVal = 0;
       }
-      if ( LRvalue > LRcenter )
+      if ( LRinput > LRcenter )
       {
-        steeringServoVal = map(LRvalue, LRcenter, X_JOYSTICK_MAX, 0, 100);
+        steeringServoVal = map(LRinput, LRcenter, X_JOYSTICK_MAX, 0, 100);
       }
       else
       {
-        steeringServoVal = map(LRvalue, X_JOYSTICK_MIN, LRcenter, -100, 0);
+        steeringServoVal = map(LRinput, X_JOYSTICK_MIN, LRcenter, -100, 0);
       }
       /*       if(debug ==1)
              {
@@ -172,13 +174,13 @@ void loop()
         if (debug == 1)    Serial.println( "Deadzone" );
 
         SendNewMotorValues(MOTOR_VALUE_STOP, MOTOR_VALUE_STOP, MOTOR_VALUE_STOP, state_machine);
-        bitClear(state_machine, 1);
+        bitClear(state_machine, 1);    //  clear the turbo bit
         previousTime = millis();
       }
       else
       {
         SendNewMotorValues(throttleServoVal, steeringServoVal, brakeServoVal, state_machine);
-        bitClear(state_machine, 1);
+        bitClear(state_machine, 1);    //  clear the turbo bit
         previousTime = millis();
       }
     }
@@ -193,34 +195,35 @@ void loop()
 
 //****************************** SUBROUTINES ************************************
 void SendNewMotorValues(char throttle, char steering, char brake, byte statemachine)
-{
-  if (debug == 1)
-  {
+{  
+   byte count;
 
-    Serial.print("throttle = ");
-    Serial.print(throttle, DEC);
-    Serial.print("\t");
-    Serial.print("steering = ");
-    Serial.print(steering, DEC);
-    Serial.print("\t");
-    Serial.print("brake = ");
-    Serial.print(brake, DEC);
-    Serial.print("\t");
-    Serial.print("state_machine = ");
-    Serial.println(statemachine, BIN);
-
-  }
-  else
-  {
-    Serial.write(SERIAL_COMMAND_SET_CMD);
-    Serial.write(statemachine);
-    Serial.write(SERIAL_COMMAND_SET_THROTTLE);
-    Serial.write(throttle);
-    Serial.write(SERIAL_COMMAND_SET_STEERING_POS);
-    Serial.write(steering);
-    Serial.write(SERIAL_COMMAND_SET_BRAKE_POS);
-    Serial.write(brake);
-  }
+   outgoingbytes[0] = SERIAL_COMMAND_SET_CMD;
+   outgoingbytes[1] = statemachine;
+   outgoingbytes[2] = SERIAL_COMMAND_SET_THROTTLE;
+   outgoingbytes[3] = throttle;
+   outgoingbytes[4] = SERIAL_COMMAND_SET_STEERING_POS;
+   outgoingbytes[5] = steering;
+   outgoingbytes[6] = SERIAL_COMMAND_SET_BRAKE_POS;
+   outgoingbytes[7] = brake;
+    
+   if (debug == 1)
+   {
+      Serial.print("state_machine = "); Serial.print(statemachine, BIN);
+      Serial.print("\t");
+      Serial.print("throttle = "); Serial.print(throttle, DEC);
+      Serial.print("\t");
+      Serial.print("steering = "); Serial.print(steering, DEC);
+      Serial.print("\t");
+      Serial.print("brake = "); Serial.println(brake, DEC);
+   }
+   else
+   {
+      for (count = 0; count < NUMBER_OF_BYTES_OUTGOING; count++)
+      {
+         Serial.write( outgoingbytes[count] );  // send data via XBee to robot    
+      }
+   }
 }
 
 int readButton()
