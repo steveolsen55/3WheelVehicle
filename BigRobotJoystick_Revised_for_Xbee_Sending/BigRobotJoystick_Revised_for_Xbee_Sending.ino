@@ -40,7 +40,7 @@ const byte TURBO = 6;
 
 const int DEAD_ZONE = 5;    //  narrow deadzone near joystick centered position
 
-const unsigned long TIME_BETWEEN_GET_DATA = 100;    // 100ms.  perhaps reduce to 50?
+const unsigned long TIME_BETWEEN_GET_DATA = 50;    // input sample and data send period in ms
 
 const long SERIAL_DATA_SPEED_BPS = 38400;     //  baud rate for Capstone Xbee's
 
