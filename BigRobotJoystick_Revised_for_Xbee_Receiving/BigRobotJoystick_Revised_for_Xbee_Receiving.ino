@@ -12,16 +12,15 @@
 
     Hardware setup:
       Arduino Pro Mini 5v 16MHz microcontroller,
-      XBee series 1 1mw U.FL Connection, on a SparkFun 'XBee Explorer Regulated' board
-      two continuous rotation servos for testing.
-      LEDs for status.
-      LiPo 22.6v battery, regulated to 5v for electronics.
+      XBee series 1 1mw U.FL Connection, mounted on a SparkFun 'XBee Explorer Regulated' board
+      3 servo connections: Electronic Speed Control (ESC) - propulsion, steering, brake.
+      LEDs for status.  Power: LiPo 22.6v battery, regulated to 5v for electronics.
 
       Robot will use an 80mm Electric Ducted Fan (EDF) with an Electronic Speed Control (ESC) for propulsion.
       Braking will be provided by servo controlled mechanical brake on the rear wheel.
       Steering is provided by servo controlled rack and pinnion steering mechanism on the front wheels.
 
-      TBD - EDF / ECS throttle limit, proportionally to turn rate, max un-boosted limit TBD
+      TBD - throttle limit, proportionally to turn rate, max un-boosted limit TBD
 
 */
 
@@ -55,7 +54,7 @@ const int SERIAL_COMMAND_SET_THROTTLE = 253;     // serial data code - next byte
 const int SERIAL_COMMAND_SET_STEERING_POS = 254; // serial data code - next byte is steering position
 const int SERIAL_COMMAND_SET_BRAKE_POS = 255;    // serial data code - next byte is brake setting
 
-const int COMM_LOSS_LIMIT = 200;     //  If no data acquired in 200 ms ==>  loss of communication
+const int COMM_LOSS_LIMIT = 200;     //  If no data acquired for specified ms ==>  loss of communication
 
 const long SERIAL_DATA_SPEED_BPS = 38400;   // Baud rate for Capstone Xbee's
 
@@ -65,13 +64,17 @@ int throttleMotorVal;       //
 int steeringMotorVal;
 int brakeMotorVal;
 
+int throttleVal;            //  temp variables
+int steeringVal;
+int brakeVal;
+
 byte state_machine = 0x00;  //  Bit 0 = Robot enabled, set for ON, clear for OFF
                             //  Bit 1 = turbo boost, set for ON, clear for OFF
                             //  Set each bit to 1 when on.  This var tracks the state machine status.
 
 char incomingBytes[NUMBER_OF_BYTES_IN_A_COMMAND];    // char type holds signed values -128 to 127
 
-boolean dataAcquired = false;   //  did read_Serial_Data receive data?
+boolean dataAcquired = false;     //  did read_Serial_Data receive data?
 
 long communication_loss_timer;    // How long has it been with Serial.available = 0?
 
@@ -107,40 +110,47 @@ void setup()
 }
 
 void loop()
-{
-   dataAcquired = read_Serial_Data();
+{ 
+   boolean robotEnabled;
    
- /* 
-    if (debug == 1)
-    {
-      Serial.print("state_machine ="); Serial.print(state_machine, BIN);
+   dataAcquired = read_Serial_Data();
+/*
+   if (debug == 1)
+   { 
+      Serial.print("dataAcquired ="); Serial.print(dataAcquired);
       Serial.print("\t");
-      Serial.print("throttle = "); Serial.print(throttleMotorVal,DEC);
+      Serial.print("  sm = "); Serial.print(state_machine,BIN);
       Serial.print("\t");
-      Serial.print("steering = "); Serial.print(steeringMotorVal,DEC);
+      Serial.print("th = "); Serial.print(throttleMotorVal,DEC);
       Serial.print("\t");
-      Serial.print("brake = "); Serial.println(brakeMotorVal,DEC);
-    }
+      Serial.print("st = "); Serial.print(steeringMotorVal,DEC);
+      Serial.print("\t");
+      Serial.print("br = "); Serial.println(brakeMotorVal,DEC);
+      delay(50);
+   }
 */
-
-   if ( communication_loss_timer > COMM_LOSS_LIMIT )
+   if ( (millis() - communication_loss_timer) > COMM_LOSS_LIMIT )
    {
+      if( debug == 1 )
+         Serial.println(" Communication lost ");
+      
       stopRobot();                                    // stop the robot immediately
-      bitClear(state_machine, 0);                     // clear the robot enabled bit
       throttleMotorVal = MOTOR_VALUE_THROTTLE_ZERO;   // set the throttle var to off 
       steeringMotorVal = MOTOR_VALUE_CENTER;          // center the steering servo var
       brakeMotorVal = MOTOR_VALUE_FULL_BRAKE;         // set brake var to full brake
       digitalWrite(GREEN_LED, LOW);                   // turn off the robot enabled light
       digitalWrite(RED_LED, HIGH);                    // turn on the robot disabled light
    }
+
+  robotEnabled = bitRead(state_machine, 0);
   
-  if ( bitRead(state_machine, 0) == true ) // Green status: pulse servos
+  if ( robotEnabled )     // Green status: pulse servos
   {
     digitalWrite(GREEN_LED, HIGH);
     digitalWrite(RED_LED, LOW);
-    motor_setValues(throttleMotorVal, steeringMotorVal, brakeMotorVal);
+    motor_setValues(throttleVal, steeringVal, brakeVal);
   }
-  if ( bitRead(state_machine, 0) == false )  //  All Stop!!
+  else                    //  All Stop!!
   {
     digitalWrite(GREEN_LED, LOW);
     digitalWrite(RED_LED, HIGH);
@@ -164,8 +174,8 @@ boolean read_Serial_Data()
 {  
    char garbage;  
 
-   if(debug == 1)
-     Serial.println( Serial.available());
+//   if(debug == 1)
+//     Serial.println( Serial.available());
    
    if (Serial.available() >= NUMBER_OF_BYTES_IN_A_COMMAND)
    {
@@ -177,13 +187,20 @@ boolean read_Serial_Data()
          incomingBytes[i] = Serial.read();
       }
 
-      state_machine = incomingBytes[1];
-      throttleMotorVal = incomingBytes[3];
-      steeringMotorVal = incomingBytes[5];
-      brakeMotorVal = incomingBytes[7];
-      return (true);
+      if ( (incomingBytes[1] <= 0x03) && (incomingBytes[1] >= 0x00) )
+      {
+         state_machine = incomingBytes[1];
+
+         if ( (incomingBytes[3] <= 100) && (incomingBytes[3] >= -100) )
+            throttleVal = incomingBytes[3];
+         if ( (incomingBytes[5] <= 100) && (incomingBytes[5] >= -100) )
+            steeringVal = incomingBytes[5];
+         if ( (incomingBytes[7] <= 100) && (incomingBytes[7] >= -100) )
+            brakeVal = incomingBytes[7];
+         return (true);
+      }
    }
-   else
+   else        //  Serial.available sees insufficient incoming data
    { 
       return (false);
    }   
@@ -191,49 +208,31 @@ boolean read_Serial_Data()
 
 void motor_setValues (int throttle, int steering, int brake)
 {
-  if (throttle == 0)
-  {
-    throttleMotorVal = MOTOR_VALUE_THROTTLE_ZERO;
-  }
-  else
-  {
-    throttleMotorVal = map(throttle,0,100,MOTOR_VALUE_THROTTLE_MIN,MOTOR_VALUE_THROTTLE_MAX );
+  boolean turboBoostOn;
 
-    if ( bitRead(state_machine, 1) == true )  // turbo boost on
-    {
-      throttleMotorVal = MOTOR_VALUE_THROTTLE_TURBO;
-      digitalWrite(BLUE_LED, HIGH);
-    }
-    else
-    {
-      digitalWrite(BLUE_LED, LOW);
-    }
+  turboBoostOn = bitRead(state_machine, 1);
+    
+  if ( turboBoostOn )     // turbo boost on
+  { 
+     throttleMotorVal = MOTOR_VALUE_THROTTLE_TURBO;
+     digitalWrite(BLUE_LED, HIGH);
+  }
+  else                    // turbo boost off
+  {
+    throttleMotorVal = map(throttle, 0, 100, MOTOR_VALUE_THROTTLE_MIN, MOTOR_VALUE_THROTTLE_MAX );
+    digitalWrite(BLUE_LED, LOW);
   }
 
-  if (steering == 0)
-  {
-     steeringMotorVal = MOTOR_VALUE_CENTER;
-  }
-  else
-  {
-     steeringMotorVal = map(steering, -100, 100, MOTOR_VALUE_MIN, MOTOR_VALUE_MAX);
-  }
-  if (brake == 0)
-  {
-     brakeMotorVal = MOTOR_VALUE_CENTER;
-  }
-  else
-  {
-     brakeMotorVal = map(brake, -100, 0, MOTOR_VALUE_NO_BRAKE, MOTOR_VALUE_FULL_BRAKE);
-  }
+  steeringMotorVal = map(steering, -100, 100, MOTOR_VALUE_MIN, MOTOR_VALUE_MAX );
+  brakeMotorVal    = map(brake, -100, 0, MOTOR_VALUE_FULL_BRAKE, MOTOR_VALUE_NO_BRAKE );
 
   if (debug == 1)
-  { 
-/*     Serial.print("throttle = "); Serial.print(throttleMotorVal);
+  {  /*
+     Serial.print("throttle = "); Serial.print(throttleMotorVal);
      Serial.print("\t");
      Serial.print("steering = "); Serial.print(steeringMotorVal);
      Serial.print("\t");
-     Serial.print("brake = "); Serial.println(brakeMotorVal);   */
+     Serial.print("brake = "); Serial.println(brakeMotorVal);    */
   }
   else
   {
