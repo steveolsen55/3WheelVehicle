@@ -205,8 +205,8 @@ void loop()
       {
         if (debug == 1)    Serial.println( "Deadzone" );
 
-        SendNewMotorValues(MOTOR_VALUE_STOP, MOTOR_VALUE_STOP, MOTOR_VALUE_STOP, state_machine);
-        bitClear(state_machine, 1);    //  clear the turbo bit
+        SendNewMotorValues(MOTOR_VALUE_STOP, MOTOR_VALUE_STOP, brakeServoVal, state_machine);
+        bitClear(state_machine, 1);    //  clear the turbo bit, but allow brakes
         previousTime = millis();
       }
       else
