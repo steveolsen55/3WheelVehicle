@@ -1,12 +1,14 @@
 /*
     James Beaver, Anthony G., Stephen A.
-    April 29, 2017
-     ETEC 290 Capstone project
+    May 14, 2017
+    ETEC 290 Capstone project
 
     Hand Controller device program for communication to robot via XBee 802.15 radio protocol.
-    A 8 bit state variable is used to track status of LEDs, button presses, and other controls.
-    If the Up/Down joystick is pushed forward --> throttle control
-                           ... pulled back    --> throttle to zero and apply brake
+    A 8 bit state variable is used to track status of LEDs, button presses, and other controls that are communicated
+    to the receiving robot.  If the Up/Down joystick is pushed forward --> throttle control.
+                           
+    Added a pushbutton input for brakes.   The Up/Down joystick is currently only used for throttle.
+                               
     Left/Right joystick input is being limited to 40% of full range.
 
     Hardware setup:
@@ -16,8 +18,7 @@
       Push button for start / stop control
       LEDs for status indicators
 
-      TBD - Turbo boost button control, to provide full speed boost on straight segments
-          - Throttle limit, proportionally to turn rate, max un-boosted limit TBD
+      TBD - Throttle limit, proportionally to turn rate, max un-boosted limit TBD
           -
 */
 
@@ -33,18 +34,20 @@ const int SERIAL_COMMAND_SET_THROTTLE = 253;
 const int SERIAL_COMMAND_SET_STEERING_POS = 254;
 const int SERIAL_COMMAND_SET_BRAKE_POS = 255;
 
-const byte RED_LED = 3;
-const byte GREEN_LED = 4;
-const byte BUTTON = 5;
-const byte TURBO = 6;
+const byte RED_LED = 3;     // robot disabled / communication loss
+const byte GREEN_LED = 4;   // robot enabled / communication working
+const byte BUTTON = 5;      // robot enable input button
+const byte TURBO = 6;       // turbo boost input button
+const byte BRAKE = 7;       // brake input button
+const byte BRAKELED = 8;    // brake LED lights when brake applied 
 
 const int DEAD_ZONE = 5;    //  narrow deadzone near joystick centered position
 
-const unsigned long TIME_BETWEEN_GET_DATA = 50;    // input sample and data send period in ms
+const unsigned long TIME_BETWEEN_GET_DATA = 50;    // input sample rate and data send period in ms
 
-const long SERIAL_DATA_SPEED_BPS = 38400;     //  baud rate for Capstone Xbee's
+const long SERIAL_DATA_SPEED_BPS = 38400;          //  baud rate for Capstone Xbee's
 
-int debug = 0;        //  set to 1 for debug output on Serial Monitor
+int debug = 0;           //  set to 1 for debug output on Serial Monitor
 
 int JOYSTICK_X = A3;     //  left/right joystick input
 int JOYSTICK_Y = A2;     //  up/down joystick input
@@ -64,7 +67,9 @@ byte state_machine = 0x00;   // bit 0 = enable Robot.
                              // This variable tracks the status of the overall state machine
 
 boolean turnOnOff = false;   //  false == 0, true != 0    initially: robot OFF
-int valButton;               // variable for reading the button pin status
+
+int brakesOn;                // brakes ON / OFF
+int valButton;               // variable for reading the enable button pin status
 
 char outgoingbytes[NUMBER_OF_BYTES_OUTGOING];  // char type holds signed values -128 to 127
 
@@ -74,15 +79,24 @@ void setup()
 {
   pinMode(RED_LED, OUTPUT);
   pinMode(GREEN_LED, OUTPUT);
+  pinMode(BRAKELED, OUTPUT);
   pinMode(BUTTON, INPUT);
   pinMode(TURBO, INPUT);
+  pinMode(BRAKE, INPUT);
 
   digitalWrite(RED_LED, HIGH);    // turn on the Red LED
   digitalWrite(GREEN_LED, LOW);   // turn off the Green LED
+  digitalWrite(BRAKELED,HIGH);    // flash brake light to ensure it works
+  delay(200);
+  digitalWrite(BRAKELED,LOW);     // turn off the brake light
   bitClear(state_machine, 0);     // Robot OFF mode
 
   UDcenter = analogRead(JOYSTICK_Y);     //  initialize the centered joystick value
   LRcenter = analogRead(JOYSTICK_X);     //  initialize the centered joystick value
+
+  throttleServoVal = UDcenter;    // initially: throttle position is off
+  brakesOn = HIGH;                // initially: brakes OFF
+  steeringServoVal = LRcenter;    // initially: steering centered
 
   Serial.begin(SERIAL_DATA_SPEED_BPS);   // enable serial communication
   previousTime = millis();               // initialize the time count
@@ -94,7 +108,7 @@ void loop()
 //  Serial.print("turnOnOff ="); Serial.println(turnOnOff);
   
   bitClear(state_machine, 1);  //  make sure turbo boost bit is clear
-  
+   
   if (turnOnOff == true)       //  Robot ON state
   {
     digitalWrite(GREEN_LED, HIGH);  // turn on the Green LED
@@ -119,6 +133,7 @@ void loop()
        UDinput = analogRead(JOYSTICK_Y);   //  read the current joystick input positions
        LRinput = analogRead(JOYSTICK_X);   //
        turboval = digitalRead(TURBO);      //  read postion of button for turbo - normally HIGH unless pressed
+       brakesOn = digitalRead(BRAKE);      // is the brake applied?
 
        //   Serial.print("turboval = "); Serial.println(turboval);
 
@@ -142,15 +157,32 @@ void loop()
           Serial.print("UDvalue = "); Serial.println(UDvalue);
         }   */
 
-      if ( UDinput > UDcenter )
+      if ( UDinput > UDcenter )           // throttle is being applied, turn off brakes
       {
         throttleServoVal = map(UDinput, UDcenter, Y_JOYSTICK_MAX, 0, 100);
         brakeServoVal = 0;
+        brakesOn = HIGH;
+        digitalWrite(BRAKELED, LOW);
       }
-      else
+      else              //  throttle is off, so check for brakes
       {
-        brakeServoVal = map(UDinput, Y_JOYSTICK_MIN, UDcenter, -105, 0);
-        throttleServoVal = 0;
+        brakesOn = digitalRead(BRAKE);      // is the brake applied?
+        
+        if (brakesOn == LOW)                // brake is being applied
+        {
+          brakeServoVal = -100;
+          digitalWrite(BRAKELED, HIGH);
+          throttleServoVal = 0;
+        }
+        else                               // brake is not being applied
+        {
+          brakeServoVal = 0;
+          digitalWrite(BRAKELED, LOW);
+        }
+        
+//    we're using a brake button instead of a joystick reading, so skipping this line:
+//        brakeServoVal = map(UDinput, Y_JOYSTICK_MIN, UDcenter, -104, 0);  
+
       }
       if ( LRinput > LRcenter )
       {
@@ -169,7 +201,7 @@ void loop()
                 Serial.print("brakeServoVal = "); Serial.println(brakeServoVal);
              }
       */
-      if (brakeServoVal >= -DEAD_ZONE && throttleServoVal <= DEAD_ZONE && steeringServoVal <=  DEAD_ZONE && steeringServoVal >= -DEAD_ZONE)
+      if (throttleServoVal <= DEAD_ZONE && steeringServoVal <=  DEAD_ZONE && steeringServoVal >= -DEAD_ZONE)
       {
         if (debug == 1)    Serial.println( "Deadzone" );
 
@@ -209,7 +241,7 @@ void SendNewMotorValues(char throttle, char steering, char brake, byte statemach
     
    if (debug == 1)
    {
-      Serial.print("state_machine = "); Serial.print(statemachine, BIN);
+      Serial.print("state_machine = "); Serial.print(statemachine, HEX);
       Serial.print("\t");
       Serial.print("throttle = "); Serial.print(throttle, DEC);
       Serial.print("\t");
