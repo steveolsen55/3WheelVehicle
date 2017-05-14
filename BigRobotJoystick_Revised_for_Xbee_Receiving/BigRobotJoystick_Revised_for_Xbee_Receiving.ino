@@ -58,7 +58,7 @@ const int COMM_LOSS_LIMIT = 200;     //  If no data acquired for specified ms ==
 
 const long SERIAL_DATA_SPEED_BPS = 38400;   // Baud rate for Capstone Xbee's
 
-byte debug = 1;      //  set to 1 to send debug output to Serial Monitor
+byte debug = 0;      //  set to 1 to send debug output to Serial Monitor
 
 int throttleMotorVal;       //
 int steeringMotorVal;
@@ -198,6 +198,10 @@ boolean read_Serial_Data()
          if ( (incomingBytes[7] <= 100) && (incomingBytes[7] >= -100) )
             brakeVal = incomingBytes[7];
          return (true);
+      }
+      else
+      {
+         Serial.print(" state_machine = "); Serial.println(incomingBytes[1], BIN);
       }
    }
    else        //  Serial.available sees insufficient incoming data
