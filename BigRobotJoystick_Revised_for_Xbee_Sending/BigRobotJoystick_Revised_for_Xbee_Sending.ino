@@ -39,7 +39,8 @@ const byte GREEN_LED = 4;   // robot enabled / communication working
 const byte BUTTON = 5;      // robot enable input button
 const byte TURBO = 6;       // turbo boost input button
 const byte BRAKE = 7;       // brake input button
-const byte BRAKELED = 8;    // brake LED lights when brake applied 
+const byte TURBOLED = 8;    // turbo ON indicator
+const byte BRAKELED = 9;    // brake LED lights when brake applied 
 
 const int DEAD_ZONE = 5;    //  narrow deadzone near joystick centered position
 
@@ -66,7 +67,7 @@ byte state_machine = 0x00;   // bit 0 = enable Robot.
                              // TBD - add bits for headlights, ??
                              // This variable tracks the status of the overall state machine
 
-boolean turnOnOff = false;   //  false == 0, true != 0    initially: robot OFF
+boolean turnOnOff = false;   //  false == 0, true != 0   
 
 int brakesOn;                // brakes ON / OFF
 int valButton;               // variable for reading the enable button pin status
@@ -84,13 +85,10 @@ void setup()
   pinMode(TURBO, INPUT);
   pinMode(BRAKE, INPUT);
 
-  digitalWrite(RED_LED, HIGH);    // turn on the Red LED
-  digitalWrite(GREEN_LED, LOW);   // turn off the Green LED
-  digitalWrite(BRAKELED,HIGH);    // flash brake light to ensure it works
-  delay(200);
-  digitalWrite(BRAKELED,LOW);     // turn off the brake light
   bitClear(state_machine, 0);     // Robot OFF mode
 
+  flashLEDs();                    //  cycle through the hand controller LEDs to ensure they work
+  
   UDcenter = analogRead(JOYSTICK_Y);     //  initialize the centered joystick value
   LRcenter = analogRead(JOYSTICK_X);     //  initialize the centered joystick value
 
@@ -104,7 +102,9 @@ void setup()
 
 void loop()
 {
-  turnOnOff = readButton();    // read button input value - subroutine near bottom of this code
+   turnOnOff = true;              // turn robot on immediately if it's power is on
+     
+//  turnOnOff = readButton();    // read button input value - subroutine near bottom of this code
 //  Serial.print("turnOnOff ="); Serial.println(turnOnOff);
   
   bitClear(state_machine, 1);  //  make sure turbo boost bit is clear
@@ -112,13 +112,11 @@ void loop()
   if (turnOnOff == true)       //  Robot ON state
   {
     digitalWrite(GREEN_LED, HIGH);  // turn on the Green LED
-    digitalWrite(RED_LED, LOW);     // turn off the Red LED
     bitSet(state_machine, 0);       // state_machine bits: Robot ON
   }
   if (turnOnOff == false)       //  Robot OFF state
   {
     digitalWrite(GREEN_LED, LOW);   // turn off the Green LED
-    digitalWrite(RED_LED, HIGH);    // turn on the Red LED
     bitClear(state_machine, 0);     // state_machine bits: Robot OFF
   }
 
@@ -277,5 +275,28 @@ int readButton()
 
   return (1 - turnOnOff);             // if the button is held longer than 20 ms then change the turnOnOff
                                       // to the opposite value to what it was
+}
+
+void flashLEDs ()
+{
+  for( int j=0; j<3; j++)
+  {
+     digitalWrite(GREEN_LED, HIGH);    // turn on the Red LED
+     digitalWrite(TURBOLED, LOW);      // turn off the Green LED
+     digitalWrite(BRAKELED,LOW);       // turn off the Red LED
+     delay(200);
+     digitalWrite(GREEN_LED, LOW);     // turn off the Green LED
+     digitalWrite(TURBOLED, HIGH);     // turn on the Blue LED
+     digitalWrite(BRAKELED,LOW);       // turn off the Red LED
+     delay(200);
+     digitalWrite(GREEN_LED, LOW);     // turn off the Green LED
+     digitalWrite(TURBOLED, LOW);      // turn off the Blue LED
+     digitalWrite(BRAKELED,HIGH);      // turn on the Red LED
+     delay(200);
+     digitalWrite(GREEN_LED, LOW);     // turn off the Green LED
+     digitalWrite(TURBOLED, LOW);      // turn off the Blue LED
+     digitalWrite(BRAKELED,LOW);       // turn off the Red LED
+     delay(200);
+  }
 }
 
