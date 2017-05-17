@@ -9,6 +9,9 @@
       If the Up/Down joystick is pushed forward --> throttle control
                            ... pulled back    --> throttle to zero and apply brake
       Left/Right joystick input is currently being limited to 40% of full range in the Hand Controller program.
+      Communication from the hand controller is done with an 8 byte data packet defined in the 
+      'BigRobotJoystick_Revised_for_Xbee_Sending' program.    This program responds with an Ackownledge code to 
+      ensure data communication is working properly.
 
     Hardware setup:
       Arduino Pro Mini 5v 16MHz microcontroller,
@@ -30,7 +33,7 @@ Servo throttleMotor;
 Servo steeringMotor;
 Servo brakeMotor;
 
-const byte RED_LED = 3;      // robot OFF
+const byte RED_LED = 3;      // error condition
 const byte GREEN_LED = 4;    // robot ON
 const byte BLUE_LED = 5;     // turbo ON
 
@@ -48,11 +51,13 @@ const int MOTOR_VALUE_THROTTLE_MIN = 0;      // electronic speed control input v
 const int MOTOR_VALUE_THROTTLE_MAX = 70;     // maximum non-turbo throttle limit
 const int MOTOR_VALUE_THROTTLE_TURBO = 100;  // maximum turbo boosted throttle limit
 
-const int NUMBER_OF_BYTES_IN_A_COMMAND = 8;      // serial data packet is 8 bytes 
+const int NUMBER_OF_BYTES_IN_A_COMMAND = 8;      // serial data packet is 8 bytes
+const int SERIAL_COMMAND_SET_ACK = 251;          // serial data code - next byte is response data
 const int SERIAL_COMMAND_SET_CMD = 252;          // serial data code - next byte is a command byte
 const int SERIAL_COMMAND_SET_THROTTLE = 253;     // serial data code - next byte is throttle setting
 const int SERIAL_COMMAND_SET_STEERING_POS = 254; // serial data code - next byte is steering position
 const int SERIAL_COMMAND_SET_BRAKE_POS = 255;    // serial data code - next byte is brake setting
+const int NUMBER_OF_BYTES_TO_SEND = 2;           // serial data packet sent back size
 
 const int COMM_LOSS_LIMIT = 200;     //  If no data acquired for specified ms ==>  loss of communication
 
@@ -73,6 +78,7 @@ byte state_machine = 0x00;  //  Bit 0 = Robot enabled, set for ON, clear for OFF
                             //  Set each bit to 1 when on.  This var tracks the state machine status.
 
 char incomingBytes[NUMBER_OF_BYTES_IN_A_COMMAND];    // char type holds signed values -128 to 127
+char outgoingBytes[NUMBER_OF_BYTES_TO_SEND];
 
 boolean dataAcquired = false;     //  did read_Serial_Data receive data?
 
@@ -89,7 +95,8 @@ void setup()
   digitalWrite(GREEN_LED, LOW);
   digitalWrite(RED_LED, HIGH);      //  set Red LED on to show robot is disabled
   digitalWrite(BLUE_LED, LOW);
-    
+
+  outgoingBytes[0] = SERIAL_COMMAND_SET_ACK;   // 
   throttleMotor.attach(MOTOR_PIN_THROTTLE);
   steeringMotor.attach (MOTOR_PIN_STEERING);
   brakeMotor.attach(MOTOR_PIN_BRAKE);
@@ -114,6 +121,7 @@ void loop()
    boolean robotEnabled;
    
    dataAcquired = read_Serial_Data();
+   
 /*
    if (debug == 1)
    { 
@@ -139,7 +147,7 @@ void loop()
       steeringMotorVal = MOTOR_VALUE_CENTER;          // center the steering servo var
       brakeMotorVal = MOTOR_VALUE_FULL_BRAKE;         // set brake var to full brake
       digitalWrite(GREEN_LED, LOW);                   // turn off the robot enabled light
-      digitalWrite(RED_LED, HIGH);                    // turn on the robot disabled light
+      digitalWrite(RED_LED, HIGH);                    // turn on the error condition light
    }
 
   robotEnabled = bitRead(state_machine, 0);
@@ -172,7 +180,8 @@ void loop()
 
 boolean read_Serial_Data()
 {  
-   char garbage;  
+   char garbage;
+   int i,out;  
 
 //   if(debug == 1)
 //     Serial.println( Serial.available());
@@ -182,11 +191,16 @@ boolean read_Serial_Data()
       while (Serial.peek() != SERIAL_COMMAND_SET_CMD)
           garbage = Serial.read(); 
    
-      for ( int i=0; i<NUMBER_OF_BYTES_IN_A_COMMAND; i++)
+      for ( i=0; i<NUMBER_OF_BYTES_IN_A_COMMAND; i++)   // capture incoming data
       {
          incomingBytes[i] = Serial.read();
       }
-
+      outgoingBytes[1] = true;                              // capture comm status in response array
+      for ( int out=0; out<NUMBER_OF_BYTES_TO_SEND; out++)  // send back response
+      {
+         Serial.write( outgoingBytes[out] );
+      }
+      
       if ( (incomingBytes[1] <= 0x03) && (incomingBytes[1] >= 0x00) )
       {
          state_machine = incomingBytes[1];
@@ -205,7 +219,12 @@ boolean read_Serial_Data()
       }
    }
    else        //  Serial.available sees insufficient incoming data
-   { 
+   {  
+      outgoingBytes[1] = false;                         // capture comm status in response array
+      for ( out=0; out<NUMBER_OF_BYTES_TO_SEND; out++)  // send back response
+      {
+         Serial.write( outgoingBytes[out] );
+      }
       return (false);
    }   
 }
