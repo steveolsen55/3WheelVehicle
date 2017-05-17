@@ -1,15 +1,16 @@
 /*
-    James Beaver, Anthony G., Stephen A.
-    May 14, 2017
+    James Beaver, Anthony Gilli, Stephan Archambeault
+    May 16, 2017
     ETEC 290 Capstone project
 
     Hand Controller device program for communication to robot via XBee 802.15 radio protocol.
     A 8 bit state variable is used to track status of LEDs, button presses, and other controls that are communicated
     to the receiving robot.  If the Up/Down joystick is pushed forward --> throttle control.
                            
-    Added a pushbutton input for brakes.   The Up/Down joystick is currently only used for throttle.
-                               
+    Added a pushbutton input for brakes.   The Up/Down joystick is currently only used for throttle.                     
     Left/Right joystick input is being limited to 40% of full range.
+
+    Added commuication response from the robot to the hand controller to validate proper communication status.  
 
     Hardware setup:
       Arduino Pro Mini 5v 16MHz microcontroller
@@ -28,11 +29,13 @@ const int X_JOYSTICK_MAX = 1022;
 const int Y_JOYSTICK_MIN = 0;
 const int Y_JOYSTICK_MAX = 1021;
 
-const int NUMBER_OF_BYTES_OUTGOING = 8;
-const int SERIAL_COMMAND_SET_CMD = 252;
-const int SERIAL_COMMAND_SET_THROTTLE = 253;
-const int SERIAL_COMMAND_SET_STEERING_POS = 254;
-const int SERIAL_COMMAND_SET_BRAKE_POS = 255;
+const int NUMBER_OF_BYTES_OUTGOING = 8;          // serial data packet is 8 bytes
+const int SERIAL_COMMAND_SET_ACK = 251;          // serial data code - next byte is response data
+const int SERIAL_COMMAND_SET_CMD = 252;          // serial data code - next byte is a command byte
+const int SERIAL_COMMAND_SET_THROTTLE = 253;     // serial data code - next byte is throttle setting
+const int SERIAL_COMMAND_SET_STEERING_POS = 254; // serial data code - next byte is steering position
+const int SERIAL_COMMAND_SET_BRAKE_POS = 255;    // serial data code - next byte is brake setting
+const int NUMBER_OF_BYTES_INCOMING = 2;          // serial data response data packet size
 
 const byte RED_LED = 3;     // robot disabled / communication loss
 const byte GREEN_LED = 4;   // robot enabled / communication working
@@ -45,6 +48,7 @@ const byte BRAKELED = 9;    // brake LED lights when brake applied
 const int DEAD_ZONE = 5;    //  narrow deadzone near joystick centered position
 
 const unsigned long TIME_BETWEEN_GET_DATA = 50;    // input sample rate and data send period in ms
+const unsigned long COMM_LOSS_LIMIT = 600;         // how long can comm response be false before error thrown 
 
 const long SERIAL_DATA_SPEED_BPS = 38400;          //  baud rate for Capstone Xbee's
 
@@ -67,14 +71,16 @@ byte state_machine = 0x00;   // bit 0 = enable Robot.
                              // TBD - add bits for headlights, ??
                              // This variable tracks the status of the overall state machine
 
-boolean turnOnOff = false;   //  false == 0, true != 0   
+boolean turnOnOff = false;   //  false == 0, true != 0
+boolean responseAck;         //  what is the robot's data response  
 
 int brakesOn;                // brakes ON / OFF
 int valButton;               // variable for reading the enable button pin status
 
-char outgoingbytes[NUMBER_OF_BYTES_OUTGOING];  // char type holds signed values -128 to 127
+char incomingBytes[NUMBER_OF_BYTES_INCOMING];  
+char outgoingBytes[NUMBER_OF_BYTES_OUTGOING];  // char type holds signed values -128 to 127
 
-unsigned long previousTime;
+unsigned long previousTime, responseTimer;
 
 void setup()
 {
@@ -86,6 +92,7 @@ void setup()
   pinMode(BRAKE, INPUT);
 
   bitClear(state_machine, 0);     // Robot OFF mode
+  responseAck = true;             // assume communication is working until we know it's not
 
   flashLEDs();                    //  cycle through the hand controller LEDs to ensure they work
   
@@ -98,6 +105,7 @@ void setup()
 
   Serial.begin(SERIAL_DATA_SPEED_BPS);   // enable serial communication
   previousTime = millis();               // initialize the time count
+  responseTimer = millis();
 }
 
 void loop()
@@ -111,14 +119,17 @@ void loop()
    
   if (turnOnOff == true)       //  Robot ON state
   {
-    digitalWrite(GREEN_LED, HIGH);  // turn on the Green LED
     bitSet(state_machine, 0);       // state_machine bits: Robot ON
   }
   if (turnOnOff == false)       //  Robot OFF state
   {
-    digitalWrite(GREEN_LED, LOW);   // turn off the Green LED
     bitClear(state_machine, 0);     // state_machine bits: Robot OFF
   }
+
+  if( responseAck == true )          // communication working?
+     digitalWrite(GREEN_LED, HIGH);  // turn on the Green LED
+  else
+     digitalWrite(GREEN_LED, LOW);  // turn off the Green LED
 
   if ( bitRead(state_machine,0) == true )     //  state machine == 'ON', so process the joystick inputs
   {
@@ -133,15 +144,17 @@ void loop()
        turboval = digitalRead(TURBO);      //  read postion of button for turbo - normally HIGH unless pressed
        brakesOn = digitalRead(BRAKE);      // is the brake applied?
 
-       //   Serial.print("turboval = "); Serial.println(turboval);
+ //         Serial.print("turboval = "); Serial.println(turboval);
 
        if (turboval)
        {
          bitClear(state_machine, 1);
+         digitalWrite(TURBOLED,LOW);
        }
        else
        {
          bitSet(state_machine, 1);
+         digitalWrite(TURBOLED,HIGH);
        }
       /*
         if(debug ==1)
@@ -156,11 +169,11 @@ void loop()
         }   */
 
       if ( UDinput > UDcenter )           // throttle is being applied, turn off brakes
-      {
-        throttleServoVal = map(UDinput, UDcenter, Y_JOYSTICK_MAX, 0, 100);
-        brakeServoVal = 0;
-        brakesOn = HIGH;
-        digitalWrite(BRAKELED, LOW);
+      {  
+         throttleServoVal = map(UDinput, UDcenter, Y_JOYSTICK_MAX, 0, 100);
+         brakeServoVal = 0;
+         brakesOn = HIGH;
+         digitalWrite(BRAKELED, LOW);
       }
       else              //  throttle is off, so check for brakes
       {
@@ -190,26 +203,29 @@ void loop()
       {
         steeringServoVal = map(LRinput, X_JOYSTICK_MIN, LRcenter, -100, 0);
       }
-      /*       if(debug ==1)
-             {
-                Serial.print("throttleServoVal = "); Serial.print(throttleServoVal);
-                Serial.print("\t");
-                Serial.print("steeringServoVal = "); Serial.print(steeringServoVal);
-                Serial.print("\t");
-                Serial.print("brakeServoVal = "); Serial.println(brakeServoVal);
-             }
-      */
+ /*     
+      if(debug ==1)
+      {
+          Serial.print("throttleServoVal = "); Serial.print(throttleServoVal);
+          Serial.print("\t");
+          Serial.print("steeringServoVal = "); Serial.print(steeringServoVal);
+          Serial.print("\t");
+          Serial.print("brakeServoVal = "); Serial.println(brakeServoVal);
+      }
+   */   
       if (throttleServoVal <= DEAD_ZONE && steeringServoVal <=  DEAD_ZONE && steeringServoVal >= -DEAD_ZONE)
       {
         if (debug == 1)    Serial.println( "Deadzone" );
 
         SendNewMotorValues(MOTOR_VALUE_STOP, MOTOR_VALUE_STOP, brakeServoVal, state_machine);
+        read_Serial_Data_ack();
         bitClear(state_machine, 1);    //  clear the turbo bit, but allow brakes
         previousTime = millis();
       }
       else
       {
         SendNewMotorValues(throttleServoVal, steeringServoVal, brakeServoVal, state_machine);
+        read_Serial_Data_ack();
         bitClear(state_machine, 1);    //  clear the turbo bit
         previousTime = millis();
       }
@@ -217,8 +233,10 @@ void loop()
   }
   else      //  state machine == 'OFF', so tell the robot
   {
-    //     Serial.print(" state_machine = "); Serial.println(state_machine,HEX);
+    //     Serial.print(" state_machine = "); Serial.println(state_machine,BIN);
     SendNewMotorValues(MOTOR_VALUE_STOP, MOTOR_VALUE_STOP, MOTOR_VALUE_STOP, state_machine);
+    read_Serial_Data_ack();
+    digitalWrite(GREEN_LED, LOW);        // turn off the Green LED
     previousTime = millis();
   }
 }
@@ -228,32 +246,71 @@ void SendNewMotorValues(char throttle, char steering, char brake, byte statemach
 {  
    byte count;
 
-   outgoingbytes[0] = SERIAL_COMMAND_SET_CMD;
-   outgoingbytes[1] = statemachine;
-   outgoingbytes[2] = SERIAL_COMMAND_SET_THROTTLE;
-   outgoingbytes[3] = throttle;
-   outgoingbytes[4] = SERIAL_COMMAND_SET_STEERING_POS;
-   outgoingbytes[5] = steering;
-   outgoingbytes[6] = SERIAL_COMMAND_SET_BRAKE_POS;
-   outgoingbytes[7] = brake;
+   outgoingBytes[0] = SERIAL_COMMAND_SET_CMD;
+   outgoingBytes[1] = statemachine;
+   outgoingBytes[2] = SERIAL_COMMAND_SET_THROTTLE;
+   outgoingBytes[3] = throttle;
+   outgoingBytes[4] = SERIAL_COMMAND_SET_STEERING_POS;
+   outgoingBytes[5] = steering;
+   outgoingBytes[6] = SERIAL_COMMAND_SET_BRAKE_POS;
+   outgoingBytes[7] = brake;
     
    if (debug == 1)
    {
-      Serial.print("state_machine = "); Serial.print(statemachine, HEX);
+/*      Serial.print("state_machine = "); Serial.print(statemachine, BIN);
       Serial.print("\t");
       Serial.print("throttle = "); Serial.print(throttle, DEC);
       Serial.print("\t");
       Serial.print("steering = "); Serial.print(steering, DEC);
       Serial.print("\t");
-      Serial.print("brake = "); Serial.println(brake, DEC);
+      Serial.print("brake = "); Serial.println(brake, DEC);    */
    }
    else
    {
       for (count = 0; count < NUMBER_OF_BYTES_OUTGOING; count++)
       {
-         Serial.write( outgoingbytes[count] );  // send data via XBee to robot    
+         Serial.write( outgoingBytes[count] );  // send data via XBee to robot    
       }
    }
+}
+
+void read_Serial_Data_ack()
+{
+   byte i;
+   char garbage;
+
+   if (Serial.available() >= NUMBER_OF_BYTES_INCOMING)    // check for incoming response data
+   {
+      while ( Serial.peek() != SERIAL_COMMAND_SET_ACK )   // data is available so assuming it's working
+      {
+         garbage = Serial.read();                         // this could get stuck if no ACK detected
+      }
+      for ( i=0; i<NUMBER_OF_BYTES_INCOMING; i++ )        // ack detected 
+      {
+        incomingBytes[i] = Serial.read();
+      }
+      responseAck = incomingBytes[1];    // what was the response?
+   }
+   else                       // no data available, so comm must be down
+   {
+      responseAck = false;   // we didn't get a response
+   }
+ 
+   if (responseAck == false)
+   {
+      if( (millis() - responseTimer) <= COMM_LOSS_LIMIT)
+      {
+        responseAck = true;    //  set ACK = true for now, but let responseTimer continue lagging 
+      }
+      else
+      {
+         //  leave responseAck = false   comm has been down for long time
+      }
+   }
+   else       //  responseAck is true, so comm is working
+   {
+      responseTimer = millis();   //  reset timer for another loop
+   }  
 }
 
 int readButton()
@@ -284,19 +341,19 @@ void flashLEDs ()
      digitalWrite(GREEN_LED, HIGH);    // turn on the Red LED
      digitalWrite(TURBOLED, LOW);      // turn off the Green LED
      digitalWrite(BRAKELED,LOW);       // turn off the Red LED
-     delay(200);
+     delay(100);
      digitalWrite(GREEN_LED, LOW);     // turn off the Green LED
      digitalWrite(TURBOLED, HIGH);     // turn on the Blue LED
      digitalWrite(BRAKELED,LOW);       // turn off the Red LED
-     delay(200);
+     delay(100);
      digitalWrite(GREEN_LED, LOW);     // turn off the Green LED
      digitalWrite(TURBOLED, LOW);      // turn off the Blue LED
      digitalWrite(BRAKELED,HIGH);      // turn on the Red LED
-     delay(200);
+     delay(100);
      digitalWrite(GREEN_LED, LOW);     // turn off the Green LED
      digitalWrite(TURBOLED, LOW);      // turn off the Blue LED
      digitalWrite(BRAKELED,LOW);       // turn off the Red LED
-     delay(200);
+     delay(100);
   }
 }
 
