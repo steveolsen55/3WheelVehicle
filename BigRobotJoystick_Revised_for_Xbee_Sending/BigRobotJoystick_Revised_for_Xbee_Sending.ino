@@ -1,14 +1,17 @@
 /*
-    James Beaver, Anthony Gilli, Stephan Archambeault
+    James Beaver, Anthony Gilliland, Stephan Archambeault
     May 16, 2017
     ETEC 290 Capstone project
 
     Hand Controller device program for communication to robot via XBee 802.15 radio protocol.
     A 8 bit state variable is used to track status of LEDs, button presses, and other controls that are communicated
     to the receiving robot.  If the Up/Down joystick is pushed forward --> throttle control.
-                           
-    Added a pushbutton input for brakes.   The Up/Down joystick is currently only used for throttle.                     
-    Left/Right joystick input is being limited to 40% of full range.
+
+    Added a LED pushbutton input for throttle 'turbo' boost.  Throttle is limited without turbo boost.   Turbo boost 
+    substantially increases the throttle input when no steering angle is being applied.
+    
+    Added a LED pushbutton input for brakes.   Pressing the brake button applies braking force through servo rotation.
+    The Up/Down joystick is currently only used for throttle.  Left/Right joystick input is being limited to 40% of full range.
 
     Added commuication response from the robot to the hand controller to validate proper communication status.  
 
@@ -16,8 +19,8 @@
       Arduino Pro Mini 5v 16MHz microcontroller
       Two Paralax 2-axis joysticks:  one for Up/Down, one for Left/Right
       XBee series 1 1mw U.FL Connection, mounted on a SparkFun 'XBee Explorer Regulated' board
-      Push button for start / stop control
-      LEDs for status indicators
+      LED push buttons for brake and turbo boost to throttle
+      LED for communication status
 
       TBD - Throttle limit, proportionally to turn rate, max un-boosted limit TBD
           -
@@ -203,6 +206,14 @@ void loop()
       {
         steeringServoVal = map(LRinput, X_JOYSTICK_MIN, LRcenter, -100, 0);
       }
+      
+      if ( steeringServoVal != 0)       //  disable turbo boost when not going straight
+      {                                 //  robot could flip if too much throttle during turns
+         bitClear(state_machine, 1);
+         digitalWrite(TURBOLED,LOW);
+      }
+
+         
  /*     
       if(debug ==1)
       {
@@ -226,7 +237,7 @@ void loop()
       {
         SendNewMotorValues(throttleServoVal, steeringServoVal, brakeServoVal, state_machine);
         read_Serial_Data_ack();
-        bitClear(state_machine, 1);    //  clear the turbo bit
+        bitClear(state_machine, 1);    //  clear the turbo bit for next loop
         previousTime = millis();
       }
     }
