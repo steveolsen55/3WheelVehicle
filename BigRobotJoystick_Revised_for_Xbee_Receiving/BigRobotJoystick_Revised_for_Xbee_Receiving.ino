@@ -37,9 +37,9 @@ const byte RED_LED = 3;      // error condition
 const byte GREEN_LED = 4;    // robot ON
 const byte BLUE_LED = 5;     // turbo ON
 
-const int MOTOR_PIN_THROTTLE = 10;
+const int MOTOR_PIN_THROTTLE = 12;
 const int MOTOR_PIN_STEERING = 11;
-const int MOTOR_PIN_BRAKE = 12;
+const int MOTOR_PIN_BRAKE = 10;
 
 const int MOTOR_VALUE_MIN = 0;
 const int MOTOR_VALUE_CENTER = 90;         // servo position for center position
