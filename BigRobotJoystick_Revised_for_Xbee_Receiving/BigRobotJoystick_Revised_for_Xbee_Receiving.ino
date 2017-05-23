@@ -1,5 +1,5 @@
 /*
-     James Beaver, Anthony G., Stephen A.
+     James Beaver, Anthony Gilliland, Stephan Archambeault
      May 2, 2017
      ETEC 290 Capstone project
 
@@ -44,12 +44,12 @@ const int MOTOR_PIN_BRAKE = 10;
 const int MOTOR_VALUE_MIN = 0;
 const int MOTOR_VALUE_CENTER = 90;         // servo position for center position
 const int MOTOR_VALUE_MAX = 180;
-const int MOTOR_VALUE_FULL_BRAKE = 45;       // servo position for full braking
+const int MOTOR_VALUE_FULL_BRAKE = 120;      // servo position for full braking
 const int MOTOR_VALUE_NO_BRAKE = 90;         // servo position for no brake applied
 const int MOTOR_VALUE_THROTTLE_ZERO = 0;     // electronic speed control input value for throttle off
 const int MOTOR_VALUE_THROTTLE_MIN = 0;      // electronic speed control input value for minimum thrust
-const int MOTOR_VALUE_THROTTLE_MAX = 70;     // maximum non-turbo throttle limit
-const int MOTOR_VALUE_THROTTLE_TURBO = 100;  // maximum turbo boosted throttle limit
+const int MOTOR_VALUE_THROTTLE_MAX = 20;     // maximum non-turbo throttle limit
+const int MOTOR_VALUE_THROTTLE_TURBO = 30;   // maximum turbo boosted throttle limit
 
 const int NUMBER_OF_BYTES_IN_A_COMMAND = 8;      // serial data packet is 8 bytes
 const int SERIAL_COMMAND_SET_ACK = 251;          // serial data code - next byte is response data
@@ -119,14 +119,13 @@ void setup()
 void loop()
 { 
    boolean robotEnabled;
-   
+
    dataAcquired = read_Serial_Data();
-   
-/*
+/*  
    if (debug == 1)
    { 
-      Serial.print("dataAcquired ="); Serial.print(dataAcquired);
-      Serial.print("\t");
+//      Serial.print("dataAcquired ="); Serial.print(dataAcquired);
+//      Serial.print("\t");
       Serial.print("  sm = "); Serial.print(state_machine,BIN);
       Serial.print("\t");
       Serial.print("th = "); Serial.print(throttleMotorVal,DEC);
@@ -139,13 +138,14 @@ void loop()
 */
    if ( (millis() - communication_loss_timer) > COMM_LOSS_LIMIT )
    {
-      if( debug == 1 )
+/*      if( debug == 1 )
          Serial.println(" Communication lost ");
-      
+*/      
       stopRobot();                                    // stop the robot immediately
       throttleMotorVal = MOTOR_VALUE_THROTTLE_ZERO;   // set the throttle var to off 
       steeringMotorVal = MOTOR_VALUE_CENTER;          // center the steering servo var
-      brakeMotorVal = MOTOR_VALUE_FULL_BRAKE;         // set brake var to full brake
+//      brakeMotorVal = MOTOR_VALUE_FULL_BRAKE;         // set brake var to full brake
+      brakeMotorVal = MOTOR_VALUE_NO_BRAKE;         // set brake var to 
       digitalWrite(GREEN_LED, LOW);                   // turn off the robot enabled light
       digitalWrite(RED_LED, HIGH);                    // turn on the error condition light
    }
@@ -203,19 +203,22 @@ boolean read_Serial_Data()
       
       if ( (incomingBytes[1] <= 0x03) && (incomingBytes[1] >= 0x00) )
       {
-         state_machine = incomingBytes[1];
+         state_machine = incomingBytes[1];                                   // ensure data is in expected range
 
          if ( (incomingBytes[3] <= 100) && (incomingBytes[3] >= -100) )
-            throttleVal = incomingBytes[3];
+            throttleVal = incomingBytes[3];                                  // ensure data is in expected range
          if ( (incomingBytes[5] <= 100) && (incomingBytes[5] >= -100) )
-            steeringVal = incomingBytes[5];
+            steeringVal = incomingBytes[5];                                  // ensure data is in expected range
          if ( (incomingBytes[7] <= 100) && (incomingBytes[7] >= -100) )
-            brakeVal = incomingBytes[7];
+            brakeVal = incomingBytes[7];                                     // ensure data is in expected range
          return (true);
       }
       else
       {
-         Serial.print(" state_machine = "); Serial.println(incomingBytes[1], BIN);
+        if (debug == 1)
+        {
+          Serial.print(" state_machine = "); Serial.println(incomingBytes[1], BIN);
+        }
       }
    }
    else        //  Serial.available sees insufficient incoming data
@@ -250,12 +253,12 @@ void motor_setValues (int throttle, int steering, int brake)
   brakeMotorVal    = map(brake, -100, 0, MOTOR_VALUE_FULL_BRAKE, MOTOR_VALUE_NO_BRAKE );
 
   if (debug == 1)
-  {  /*
+  {  
      Serial.print("throttle = "); Serial.print(throttleMotorVal);
      Serial.print("\t");
      Serial.print("steering = "); Serial.print(steeringMotorVal);
      Serial.print("\t");
-     Serial.print("brake = "); Serial.println(brakeMotorVal);    */
+     Serial.print("brake = "); Serial.println(brakeMotorVal);
   }
   else
   {
