@@ -157,7 +157,6 @@ void loop()
        else
        {
          bitSet(state_machine, 1);
-         digitalWrite(TURBOLED,HIGH);
        }
       /*
         if(debug ==1)
@@ -171,27 +170,40 @@ void loop()
           Serial.print("UDvalue = "); Serial.println(UDvalue);
         }   */
 
-      if ( UDinput > UDcenter )           // throttle is being applied, turn off brakes
+      if ( UDinput > UDcenter )     // throttle is being applied
       {  
          throttleServoVal = map(UDinput, UDcenter, Y_JOYSTICK_MAX, 0, 100);
-         brakeServoVal = 0;
-         brakesOn = HIGH;
-         digitalWrite(BRAKELED, LOW);
+         if ( (bitRead(state_machine,1) == 0) )    // turbo is not applied
+         {
+            //  do nothing.   leave throttle mapping alone      
+         }
+         else           //  turbo is being applied
+         {
+            if ( steeringServoVal != 0)       //  disable turbo boost when not going straight
+            {                                 //  robot could flip if too much throttle during turns
+               bitClear(state_machine, 1);
+               digitalWrite(TURBOLED,LOW);
+            }
+            else        //  full throttle!!
+            {
+               throttleServoVal = 100;    
+               digitalWrite(TURBOLED,HIGH);
+            }  
+          
+         }
       }
-      else              //  throttle is off, so check for brakes
-      {
-        brakesOn = digitalRead(BRAKE);      // is the brake applied?
-        
-        if (brakesOn == LOW)                // brake is being applied
-        {
-          brakeServoVal = -100;
-          digitalWrite(BRAKELED, HIGH);
-          throttleServoVal = 0;
+      else                          // throttle is off, so check for brakes
+      {       
+         if (brakesOn == LOW)                // brake is being applied
+         {
+           brakeServoVal = -100;
+           digitalWrite(BRAKELED, HIGH);
+           throttleServoVal = 0;
         }
         else                               // brake is not being applied
         {
-          brakeServoVal = 0;
-          digitalWrite(BRAKELED, LOW);
+           brakeServoVal = 0;
+           digitalWrite(BRAKELED, LOW);
         }
         
 //    we're using a brake button instead of a joystick reading, so skipping this line:
@@ -206,15 +218,7 @@ void loop()
       {
         steeringServoVal = map(LRinput, X_JOYSTICK_MIN, LRcenter, -100, 0);
       }
-      
-      if ( steeringServoVal != 0)       //  disable turbo boost when not going straight
-      {                                 //  robot could flip if too much throttle during turns
-         bitClear(state_machine, 1);
-         digitalWrite(TURBOLED,LOW);
-      }
-
-         
- /*     
+          
       if(debug ==1)
       {
           Serial.print("throttleServoVal = "); Serial.print(throttleServoVal);
@@ -223,10 +227,10 @@ void loop()
           Serial.print("\t");
           Serial.print("brakeServoVal = "); Serial.println(brakeServoVal);
       }
-   */   
+
       if (throttleServoVal <= DEAD_ZONE && steeringServoVal <=  DEAD_ZONE && steeringServoVal >= -DEAD_ZONE)
       {
-        if (debug == 1)    Serial.println( "Deadzone" );
+//        if (debug == 1)    Serial.println( "Deadzone" );
 
         SendNewMotorValues(MOTOR_VALUE_STOP, MOTOR_VALUE_STOP, brakeServoVal, state_machine);
         read_Serial_Data_ack();
@@ -240,6 +244,9 @@ void loop()
         bitClear(state_machine, 1);    //  clear the turbo bit for next loop
         previousTime = millis();
       }
+      throttleServoVal = 0;     //  clear vars for next loop
+      steeringServoVal = 0;
+      brakeServoVal = 0;
     }
   }
   else      //  state machine == 'OFF', so tell the robot
