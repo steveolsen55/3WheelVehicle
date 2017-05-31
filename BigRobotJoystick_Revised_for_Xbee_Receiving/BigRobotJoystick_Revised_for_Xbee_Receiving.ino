@@ -41,15 +41,15 @@ const int MOTOR_PIN_THROTTLE = 12;
 const int MOTOR_PIN_STEERING = 11;
 const int MOTOR_PIN_BRAKE = 10;
 
-const int MOTOR_VALUE_MIN = 0;
+const int MOTOR_VALUE_MIN = 60;
 const int MOTOR_VALUE_CENTER = 90;         // servo position for center position
-const int MOTOR_VALUE_MAX = 180;
-const int MOTOR_VALUE_FULL_BRAKE = 120;      // servo position for full braking
+const int MOTOR_VALUE_MAX = 120;
+const int MOTOR_VALUE_FULL_BRAKE = 70;      // servo position for full braking
 const int MOTOR_VALUE_NO_BRAKE = 90;         // servo position for no brake applied
 const int MOTOR_VALUE_THROTTLE_ZERO = 0;     // electronic speed control input value for throttle off
-const int MOTOR_VALUE_THROTTLE_MIN = 0;      // electronic speed control input value for minimum thrust
-const int MOTOR_VALUE_THROTTLE_MAX = 20;     // maximum non-turbo throttle limit
-const int MOTOR_VALUE_THROTTLE_TURBO = 30;   // maximum turbo boosted throttle limit
+const int MOTOR_VALUE_THROTTLE_MIN = 60;      // electronic speed control input value for minimum thrust
+const int MOTOR_VALUE_THROTTLE_MAX = 89;     // maximum non-turbo throttle limit
+const int MOTOR_VALUE_THROTTLE_TURBO = 89;   // maximum turbo boosted throttle limit
 
 const int NUMBER_OF_BYTES_IN_A_COMMAND = 8;      // serial data packet is 8 bytes
 const int SERIAL_COMMAND_SET_ACK = 251;          // serial data code - next byte is response data
@@ -60,6 +60,7 @@ const int SERIAL_COMMAND_SET_BRAKE_POS = 255;    // serial data code - next byte
 const int NUMBER_OF_BYTES_TO_SEND = 2;           // serial data packet sent back size
 
 const int COMM_LOSS_LIMIT = 200;     //  If no data acquired for specified ms ==>  loss of communication
+const int MOTOR_SET_PERIOD = 0;     //  only send data to servos every MOTOR_SET_PERIOD milliseconds
 
 const long SERIAL_DATA_SPEED_BPS = 38400;   // Baud rate for Capstone Xbee's
 
@@ -82,7 +83,8 @@ char outgoingBytes[NUMBER_OF_BYTES_TO_SEND];
 
 boolean dataAcquired = false;     //  did read_Serial_Data receive data?
 
-long communication_loss_timer;    // How long has it been with Serial.available = 0?
+unsigned long communication_loss_timer;    // How long has it been with Serial.available = 0?
+unsigned long motor_set_period_timer; 
 
 void setup()
 {
@@ -112,6 +114,7 @@ void setup()
   throttleMotor.write(0);
 
   communication_loss_timer = millis();
+  motor_set_period_timer = millis();
   
   Serial.begin(SERIAL_DATA_SPEED_BPS);
 }
@@ -119,11 +122,11 @@ void setup()
 void loop()
 { 
    boolean robotEnabled;
-
+   
    dataAcquired = read_Serial_Data();
-/*  
+  
    if (debug == 1)
-   { 
+   {   /*
 //      Serial.print("dataAcquired ="); Serial.print(dataAcquired);
 //      Serial.print("\t");
       Serial.print("  sm = "); Serial.print(state_machine,BIN);
@@ -133,9 +136,9 @@ void loop()
       Serial.print("st = "); Serial.print(steeringMotorVal,DEC);
       Serial.print("\t");
       Serial.print("br = "); Serial.println(brakeMotorVal,DEC);
-      delay(50);
+      delay(50);    */
    }
-*/
+
    if ( (millis() - communication_loss_timer) > COMM_LOSS_LIMIT )
    {
 /*      if( debug == 1 )
@@ -198,7 +201,7 @@ boolean read_Serial_Data()
       outgoingBytes[1] = true;                              // capture comm status in response array
       for ( int out=0; out<NUMBER_OF_BYTES_TO_SEND; out++)  // send back response
       {
-         Serial.write( outgoingBytes[out] );
+  //       Serial.write( outgoingBytes[out] );
       }
       
       if ( (incomingBytes[1] <= 0x03) && (incomingBytes[1] >= 0x00) )
@@ -226,7 +229,7 @@ boolean read_Serial_Data()
       outgoingBytes[1] = false;                         // capture comm status in response array
       for ( out=0; out<NUMBER_OF_BYTES_TO_SEND; out++)  // send back response
       {
-         Serial.write( outgoingBytes[out] );
+   //      Serial.write( outgoingBytes[out] );
       }
       return (false);
    }   
@@ -252,19 +255,28 @@ void motor_setValues (int throttle, int steering, int brake)
   steeringMotorVal = map(steering, -100, 100, MOTOR_VALUE_MIN, MOTOR_VALUE_MAX );
   brakeMotorVal    = map(brake, -100, 0, MOTOR_VALUE_FULL_BRAKE, MOTOR_VALUE_NO_BRAKE );
 
-  if (debug == 1)
-  {  
-     Serial.print("throttle = "); Serial.print(throttleMotorVal);
-     Serial.print("\t");
-     Serial.print("steering = "); Serial.print(steeringMotorVal);
-     Serial.print("\t");
-     Serial.print("brake = "); Serial.println(brakeMotorVal);
-  }
-  else
+  if ( millis() - motor_set_period_timer > MOTOR_SET_PERIOD )
   {
-    throttleMotor.write(throttleMotorVal);
-    steeringMotor.write(steeringMotorVal);
-    brakeMotor.write(brakeMotorVal);
+     if (debug == 1)
+     {  
+       Serial.print("throttle = "); Serial.print(throttleMotorVal);
+       Serial.print("\t");
+       Serial.print("steering = "); Serial.print(steeringMotorVal);
+       Serial.print("\t");
+       Serial.print("brake = "); Serial.println(brakeMotorVal);
+    }
+    else
+    {  
+/*             Serial.print("throttle = "); Serial.print(throttleMotorVal);
+       Serial.print("\t");
+       Serial.print("steering = "); Serial.print(steeringMotorVal);
+       Serial.print("\t");
+       Serial.print("brake = "); Serial.println(brakeMotorVal);    */
+      throttleMotor.write(throttleMotorVal);
+      steeringMotor.write(steeringMotorVal);
+      brakeMotor.write(brakeMotorVal);
+    }
+    motor_set_period_timer = millis();
   }
 }
 
