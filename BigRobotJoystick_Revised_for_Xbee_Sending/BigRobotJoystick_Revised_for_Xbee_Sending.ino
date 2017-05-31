@@ -220,12 +220,12 @@ void loop()
       }
           
       if(debug ==1)
-      {
+      {  /*
           Serial.print("throttleServoVal = "); Serial.print(throttleServoVal);
           Serial.print("\t");
           Serial.print("steeringServoVal = "); Serial.print(steeringServoVal);
           Serial.print("\t");
-          Serial.print("brakeServoVal = "); Serial.println(brakeServoVal);
+          Serial.print("brakeServoVal = "); Serial.println(brakeServoVal);    */
       }
 
       if (throttleServoVal <= DEAD_ZONE && steeringServoVal <=  DEAD_ZONE && steeringServoVal >= -DEAD_ZONE)
@@ -233,14 +233,14 @@ void loop()
 //        if (debug == 1)    Serial.println( "Deadzone" );
 
         SendNewMotorValues(MOTOR_VALUE_STOP, MOTOR_VALUE_STOP, brakeServoVal, state_machine);
-        read_Serial_Data_ack();
+//        read_Serial_Data_ack();
         bitClear(state_machine, 1);    //  clear the turbo bit, but allow brakes
         previousTime = millis();
       }
       else
       {
         SendNewMotorValues(throttleServoVal, steeringServoVal, brakeServoVal, state_machine);
-        read_Serial_Data_ack();
+//        read_Serial_Data_ack();
         bitClear(state_machine, 1);    //  clear the turbo bit for next loop
         previousTime = millis();
       }
@@ -253,7 +253,7 @@ void loop()
   {
     //     Serial.print(" state_machine = "); Serial.println(state_machine,BIN);
     SendNewMotorValues(MOTOR_VALUE_STOP, MOTOR_VALUE_STOP, MOTOR_VALUE_STOP, state_machine);
-    read_Serial_Data_ack();
+ //   read_Serial_Data_ack();
     digitalWrite(GREEN_LED, LOW);        // turn off the Green LED
     previousTime = millis();
   }
@@ -275,13 +275,13 @@ void SendNewMotorValues(char throttle, char steering, char brake, byte statemach
     
    if (debug == 1)
    {
-/*      Serial.print("state_machine = "); Serial.print(statemachine, BIN);
+      Serial.print("state_machine = "); Serial.print(statemachine, BIN);
       Serial.print("\t");
       Serial.print("throttle = "); Serial.print(throttle, DEC);
       Serial.print("\t");
       Serial.print("steering = "); Serial.print(steering, DEC);
       Serial.print("\t");
-      Serial.print("brake = "); Serial.println(brake, DEC);    */
+      Serial.print("brake = "); Serial.println(brake, DEC); 
    }
    else
    {
