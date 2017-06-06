@@ -126,7 +126,7 @@ void loop()
    dataAcquired = read_Serial_Data();
   
    if (debug == 1)
-   {   /*
+   {   
 //      Serial.print("dataAcquired ="); Serial.print(dataAcquired);
 //      Serial.print("\t");
       Serial.print("  sm = "); Serial.print(state_machine,BIN);
@@ -136,7 +136,7 @@ void loop()
       Serial.print("st = "); Serial.print(steeringMotorVal,DEC);
       Serial.print("\t");
       Serial.print("br = "); Serial.println(brakeMotorVal,DEC);
-      delay(50);    */
+      delay(50);
    }
 
    if ( (millis() - communication_loss_timer) > COMM_LOSS_LIMIT )
@@ -186,8 +186,8 @@ boolean read_Serial_Data()
    char garbage;
    int i,out;  
 
-//   if(debug == 1)
-//     Serial.println( Serial.available());
+   if(debug == 1)
+      Serial.println( Serial.available());
    
    if (Serial.available() >= NUMBER_OF_BYTES_IN_A_COMMAND)
    {
