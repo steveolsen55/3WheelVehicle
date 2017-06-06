@@ -225,7 +225,7 @@ void loop()
           Serial.print("\t");
           Serial.print("steeringServoVal = "); Serial.print(steeringServoVal);
           Serial.print("\t");
-          Serial.print("brakeServoVal = "); Serial.println(brakeServoVal);    */
+          Serial.print("brakeServoVal = "); Serial.println(brakeServoVal);     */
       }
 
       if (throttleServoVal <= DEAD_ZONE && steeringServoVal <=  DEAD_ZONE && steeringServoVal >= -DEAD_ZONE)
