@@ -1,11 +1,12 @@
 /*
      James Beaver, Anthony Gilliland, Stephan Archambeault
-     May 2, 2017
+     June 9, 2017
      ETEC 290 Capstone project
 
     Robot control program.
-      Hand controller joystick position communication via XBee 802.15 radio protocol.
-      A 8 bit state variable is used to track status of LEDs, button presses, and other controls.
+      This code is the robot control program.  The hand controller joystick position and button inputs are communicated to this 
+      code via XBee 802.15 radio protocol.  An 8 bit state variable is used to track status of LEDs, 
+      button presses, and other controls.
       If the Up/Down joystick is pushed forward --> throttle control
                            ... pulled back    --> throttle to zero and apply brake
       Left/Right joystick input is currently being limited to 40% of full range in the Hand Controller program.
@@ -19,11 +20,13 @@
       3 servo connections: Electronic Speed Control (ESC) - propulsion, steering, brake.
       LEDs for status.  Power: LiPo 22.6v battery, regulated to 5v for electronics.
 
-      Robot will use an 80mm Electric Ducted Fan (EDF) with an Electronic Speed Control (ESC) for propulsion.
-      Braking will be provided by servo controlled mechanical brake on the rear wheel.
+      Robot uses an 80mm Electric Ducted Fan (EDF) with an Electronic Speed Control (ESC) for propulsion.
+      Braking is provided by servo controlled mechanical brake on the rear wheel.
       Steering is provided by servo controlled rack and pinnion steering mechanism on the front wheels.
 
-      TBD - throttle limit, proportionally to turn rate, max un-boosted limit TBD
+    Throttle input from the joystick is limited to 50% of full throttle range.   This is intended to reduce the 
+    chance of flipping the robot during turns.   The 'turbo boost' throttle limit is now set to 100% of full throttle.
+    'turbo boost' is only enabled when steering input is 0. 
 
 */
 
@@ -41,15 +44,16 @@ const int MOTOR_PIN_THROTTLE = 12;
 const int MOTOR_PIN_STEERING = 11;
 const int MOTOR_PIN_BRAKE = 10;
 
-const int MOTOR_VALUE_MIN = 60;
-const int MOTOR_VALUE_CENTER = 90;         // servo position for center position
-const int MOTOR_VALUE_MAX = 120;
+
+const int MOTOR_VALUE_CENTER = 100;         // servo position for center position
+const int MOTOR_VALUE_MIN = MOTOR_VALUE_CENTER-30;
+const int MOTOR_VALUE_MAX = MOTOR_VALUE_CENTER+30;
 const int MOTOR_VALUE_FULL_BRAKE = 70;      // servo position for full braking
 const int MOTOR_VALUE_NO_BRAKE = 90;         // servo position for no brake applied
 const int MOTOR_VALUE_THROTTLE_ZERO = 0;     // electronic speed control input value for throttle off
-const int MOTOR_VALUE_THROTTLE_MIN = 60;      // electronic speed control input value for minimum thrust
-const int MOTOR_VALUE_THROTTLE_MAX = 89;     // maximum non-turbo throttle limit
-const int MOTOR_VALUE_THROTTLE_TURBO = 89;   // maximum turbo boosted throttle limit
+const int MOTOR_VALUE_THROTTLE_MIN = 60;     // electronic speed control input value for minimum thrust
+const int MOTOR_VALUE_THROTTLE_MAX = 74;     // maximum non-turbo throttle limit
+const int MOTOR_VALUE_THROTTLE_TURBO = 89;   // maximum turbo boosted throttle limit, ESC input at maximum effect
 
 const int NUMBER_OF_BYTES_IN_A_COMMAND = 8;      // serial data packet is 8 bytes
 const int SERIAL_COMMAND_SET_ACK = 251;          // serial data code - next byte is response data
@@ -140,17 +144,17 @@ void loop()
    }
 
    if ( (millis() - communication_loss_timer) > COMM_LOSS_LIMIT )
-   {
-/*      if( debug == 1 )
+   {   /*   disabled due to inconsistent comm packet flow causing irratic behaviour
+      if( debug == 1 )
          Serial.println(" Communication lost ");
-*/      
+      
       stopRobot();                                    // stop the robot immediately
       throttleMotorVal = MOTOR_VALUE_THROTTLE_ZERO;   // set the throttle var to off 
       steeringMotorVal = MOTOR_VALUE_CENTER;          // center the steering servo var
 //      brakeMotorVal = MOTOR_VALUE_FULL_BRAKE;         // set brake var to full brake
       brakeMotorVal = MOTOR_VALUE_NO_BRAKE;         // set brake var to 
       digitalWrite(GREEN_LED, LOW);                   // turn off the robot enabled light
-      digitalWrite(RED_LED, HIGH);                    // turn on the error condition light
+      digitalWrite(RED_LED, HIGH);                    // turn on the error condition light  */
    }
 
   robotEnabled = bitRead(state_machine, 0);
@@ -252,18 +256,26 @@ void motor_setValues (int throttle, int steering, int brake)
     digitalWrite(BLUE_LED, LOW);
   }
 
-  steeringMotorVal = map(steering, -100, 100, MOTOR_VALUE_MIN, MOTOR_VALUE_MAX );
+  if ( steering >= 0 )
+  {
+     steeringMotorVal = map(steering, 0, 100, MOTOR_VALUE_CENTER, MOTOR_VALUE_MAX );
+  }
+  else
+  {
+     steeringMotorVal = map(steering, -100, 0, MOTOR_VALUE_MIN, MOTOR_VALUE_CENTER );
+  }
+  
   brakeMotorVal    = map(brake, -100, 0, MOTOR_VALUE_FULL_BRAKE, MOTOR_VALUE_NO_BRAKE );
 
   if ( millis() - motor_set_period_timer > MOTOR_SET_PERIOD )
   {
      if (debug == 1)
-     {  
+     {  /*
        Serial.print("throttle = "); Serial.print(throttleMotorVal);
        Serial.print("\t");
        Serial.print("steering = "); Serial.print(steeringMotorVal);
        Serial.print("\t");
-       Serial.print("brake = "); Serial.println(brakeMotorVal);
+       Serial.print("brake = "); Serial.println(brakeMotorVal);   */
     }
     else
     {  
@@ -273,7 +285,13 @@ void motor_setValues (int throttle, int steering, int brake)
        Serial.print("\t");
        Serial.print("brake = "); Serial.println(brakeMotorVal);    */
       throttleMotor.write(throttleMotorVal);
+
+  Serial.print("steering = "); Serial.println(steeringMotorVal,DEC);    
+      
       steeringMotor.write(steeringMotorVal);
+
+//   Serial.print("brake = "); Serial.println(brakeMotorVal,DEC); 
+
       brakeMotor.write(brakeMotorVal);
     }
     motor_set_period_timer = millis();
