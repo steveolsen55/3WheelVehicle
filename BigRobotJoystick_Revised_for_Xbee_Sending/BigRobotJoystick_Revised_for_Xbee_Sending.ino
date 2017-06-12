@@ -30,7 +30,7 @@ const int MOTOR_VALUE_STOP = 0;
 const int X_JOYSTICK_MIN = 3;
 const int X_JOYSTICK_MAX = 1022;
 const int Y_JOYSTICK_MIN = 0;
-const int Y_JOYSTICK_MAX = 1021;
+const int Y_JOYSTICK_MAX = 1023;
 
 const int NUMBER_OF_BYTES_OUTGOING = 8;          // serial data packet is 8 bytes
 const int SERIAL_COMMAND_SET_ACK = 251;          // serial data code - next byte is response data
@@ -147,7 +147,7 @@ void loop()
        turboval = digitalRead(TURBO);      //  read postion of button for turbo - normally HIGH unless pressed
        brakesOn = digitalRead(BRAKE);      // is the brake applied?
 
- //         Serial.print("turboval = "); Serial.println(turboval);
+//        Serial.print("LRinput = "); Serial.println(LRinput);
 
        if (turboval)
        {
@@ -158,17 +158,17 @@ void loop()
        {
          bitSet(state_machine, 1);
        }
-      /*
+      
         if(debug ==1)
-        {
+        {  /*
           Serial.print("LRcenter = "); Serial.print(LRcenter);
           Serial.print("\t");
           Serial.print("UDcenter = "); Serial.print(UDcenter);
           Serial.print("\t");
           Serial.print("LRvalue = "); Serial.print(LRvalue);
           Serial.print("\t");
-          Serial.print("UDvalue = "); Serial.println(UDvalue);
-        }   */
+          Serial.print("UDvalue = "); Serial.println(UDvalue);   */
+        } 
 
       if ( UDinput > UDcenter )     // throttle is being applied
       {  
@@ -210,22 +210,34 @@ void loop()
 //        brakeServoVal = map(UDinput, Y_JOYSTICK_MIN, UDcenter, -104, 0);  
 
       }
+
+   if( ( LRinput > (LRcenter-4)) && ( LRinput < (LRcenter+4) )  )
+   {
+      steeringServoVal = 0;      // dead zone --> don't map steering angle
+//      Serial.print("LRinput = "); Serial.print(LRinput);   Serial.println(" deadzone ");
+   }
+   else
+   {
       if ( LRinput > LRcenter )
       {
-        steeringServoVal = map(LRinput, LRcenter, X_JOYSTICK_MAX, 0, 100);
+//        Serial.print("LRinput = "); Serial.print(LRinput);
+        steeringServoVal = map(LRinput, LRcenter, X_JOYSTICK_MAX, 0, -100);
+//        Serial.print("    "); Serial.print("steeringServoVal = "); Serial.println(steeringServoVal);
       }
       else
       {
-        steeringServoVal = map(LRinput, X_JOYSTICK_MIN, LRcenter, -100, 0);
+//        Serial.print("LRinput = "); Serial.print(LRinput);
+        steeringServoVal = map(LRinput, X_JOYSTICK_MIN, LRcenter, 100, 0);
+//        Serial.print("    "); Serial.print("steeringServoVal = "); Serial.println(steeringServoVal);
       }
-          
+   }      
       if(debug ==1)
-      {  /*
+      {   /*
           Serial.print("throttleServoVal = "); Serial.print(throttleServoVal);
           Serial.print("\t");
           Serial.print("steeringServoVal = "); Serial.print(steeringServoVal);
           Serial.print("\t");
-          Serial.print("brakeServoVal = "); Serial.println(brakeServoVal);     */
+          Serial.print("brakeServoVal = "); Serial.println(brakeServoVal);    */
       }
 
       if (throttleServoVal <= DEAD_ZONE && steeringServoVal <=  DEAD_ZONE && steeringServoVal >= -DEAD_ZONE)
@@ -274,14 +286,14 @@ void SendNewMotorValues(char throttle, char steering, char brake, byte statemach
    outgoingBytes[7] = brake;
     
    if (debug == 1)
-   {
+   {  
       Serial.print("state_machine = "); Serial.print(statemachine, BIN);
       Serial.print("\t");
       Serial.print("throttle = "); Serial.print(throttle, DEC);
       Serial.print("\t");
       Serial.print("steering = "); Serial.print(steering, DEC);
       Serial.print("\t");
-      Serial.print("brake = "); Serial.println(brake, DEC); 
+      Serial.print("brake = "); Serial.println(brake, DEC);  
    }
    else
    {
